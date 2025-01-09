@@ -8,8 +8,8 @@ debug: CFLAGS += -g3
 prod: CFLAGS += -O3
 debug prod: minesweeper
 
-minesweeper: ui.o
-ui.o: ui.h
+minesweeper: ui.o shared.h
+ui.o: ui.h shared.h
 
 clean:
 	-rm *.o minesweeper
