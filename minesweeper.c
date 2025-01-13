@@ -27,6 +27,15 @@ int main(void)
 void init_game_state(void)
 {
   memset(game_state.tiles, 0, sizeof(game_state.tiles));
+
+  // TODO: remove this
+  for(int i = 0; i < 8; i++) {
+    game_state.tiles[0][i].num_adjacent_bombs = i + 1;
+  }
+  game_state.tiles[1][1].has_bomb = true;
+  game_state.tiles[1][2].has_bomb = true;
+  game_state.tiles[1][2].bomb_exploded = true;
+  game_state.tiles[1][3].flagged = true;
 }
 
 void register_input_handlers(void)

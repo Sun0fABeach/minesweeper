@@ -1,5 +1,6 @@
-#include <stdint.h>
+#include <stddef.h>
 #include "ui.h"
+#include "textures.h"
 #include "raylib.h"
 
 typedef enum tile_variant {
@@ -16,12 +17,21 @@ static void draw_board(
 static void draw_board_tiles(
   const tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
+static void draw_tile_with_shadow_with_content(
+  int pos_x, int pos_y,
+  int width, int height,
+  tile_variant_e variant,
+  tile_s tile
+);
 static void draw_tile_with_shadow(
-  int pos_x,
-  int pos_y,
-  int width,
-  int height,
+  int pos_x, int pos_y,
+  int width, int height,
   tile_variant_e variant
+);
+static void draw_tile_revealed_with_content(
+  int pos_x, int pos_y,
+  int width, int height,
+  tile_s tile
 );
 static void draw_tile_revealed(int pos_x, int pos_y, int width, int height);
 
@@ -74,10 +84,14 @@ void ui_init(const difficulty_e difficulty)
 
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(game_frame_width, game_frame_height, "Minesweeper");
+  SetTargetFPS(60);
+
+  textures_load();
 }
 
 void ui_deinit(void)
 {
+  textures_unload();
   CloseWindow();
 }
 
@@ -175,27 +189,60 @@ static void draw_board_tiles(
       const int tile_x = board_x + TILE_WIDTH * col;
 
       if(tiles[row][col].revealed) {
-        draw_tile_revealed(tile_x, tile_y, TILE_WIDTH, TILE_HEIGHT);
+        draw_tile_revealed_with_content(
+          tile_x,
+          tile_y,
+          TILE_WIDTH,
+          TILE_HEIGHT,
+          tiles[row][col]
+        );
       } else {
-        draw_tile_with_shadow(
+        draw_tile_with_shadow_with_content(
           tile_x, tile_y,
           TILE_WIDTH, TILE_HEIGHT,
-          PROTRUDING
+          PROTRUDING,
+          tiles[row][col]
         );
       }
     }
   }
 
   if(pressed_tile.active) {
-    const uint8_t col = pressed_tile.coords.x;
-    const uint8_t row = pressed_tile.coords.y;
+    const int col = pressed_tile.coords.x;
+    const int row = pressed_tile.coords.y;
 
-    if(!tiles[col][row].revealed)
+    if(!tiles[row][col].revealed)
       draw_tile_revealed(
         board_x + TILE_WIDTH * col,
         board_y + TILE_HEIGHT * row,
         TILE_WIDTH, TILE_HEIGHT
       );
+  }
+}
+
+static void draw_tile_with_shadow_with_content(
+  const int pos_x,
+  const int pos_y,
+  const int width,
+  const int height,
+  const tile_variant_e variant,
+  const tile_s tile
+)
+{
+  draw_tile_with_shadow(pos_x, pos_y, width, height, variant);
+
+  if(tile.flagged) {
+    DrawTexturePro(
+      textures.sprite_atlas,
+      textures.src_rects.flag,
+      (Rectangle) {
+        pos_x + TILE_BORDER_THICKNESS,
+        pos_y + TILE_BORDER_THICKNESS,
+        width - TILE_BORDER_THICKNESS*2,
+        height - TILE_BORDER_THICKNESS*2
+      },
+      (Vector2) { 0, 0 }, 0, WHITE
+    );
   }
 }
 
@@ -260,6 +307,39 @@ static void draw_tile_with_shadow(
     (Vector2) { inner_x, pos_y },
     top_left_lighting
   );
+}
+
+static void draw_tile_revealed_with_content(
+  const int pos_x,
+  const int pos_y,
+  const int width,
+  const int height,
+  const tile_s tile
+)
+{
+  draw_tile_revealed(pos_x, pos_y, width, height);
+
+  const Rectangle *src_rect = NULL;
+
+  if(tile.has_bomb) {
+    if(tile.bomb_exploded)
+      src_rect = &textures.src_rects.bomb_exploded;
+    else
+      src_rect = &textures.src_rects.bomb;
+  } else if(tile.flagged) {
+    src_rect = &textures.src_rects.bomb_false_guess;
+  } else if(tile.num_adjacent_bombs > 0) {
+    src_rect = &textures.src_rects.numbers[tile.num_adjacent_bombs - 1];
+  }
+
+  if(src_rect) {
+    DrawTexturePro(
+      textures.sprite_atlas,
+      *src_rect,
+      (Rectangle) { pos_x + 1, pos_y + 1, width - 2, height - 2 },
+      (Vector2) { 0, 0 }, 0, WHITE
+    );
+  }
 }
 
 static void draw_tile_revealed(

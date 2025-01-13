@@ -1,8 +1,6 @@
 #ifndef SHARED_H
 #define SHARED_H
 
-#include <stdint.h>
-
 #define NUM_TILES_X_BEGINNER 9
 #define NUM_TILES_Y_BEGINNER 9
 #define NUM_TILES_X_INTERMEDIATE 16
@@ -46,7 +44,7 @@ static constexpr difficulty_settings_s difficulty_settings[] = {
 typedef struct tile {
   unsigned num_adjacent_bombs: 4;
   unsigned has_bomb: 1;
-  unsigned has_flag: 1;
+  unsigned flagged: 1;
   unsigned revealed: 1;
   unsigned bomb_exploded: 1;
 } tile_s;
@@ -57,8 +55,8 @@ typedef struct game_state {
 } game_state_s;
 
 typedef struct tile_coords {
-  uint8_t x;
-  uint8_t y;
+  int x;
+  int y;
 } tile_coords_s;
 
 #endif
