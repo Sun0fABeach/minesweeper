@@ -321,15 +321,15 @@ static void draw_tile_revealed_with_content(
 
   const Rectangle *src_rect = NULL;
 
-  if(tile.has_bomb) {
+  if(tile.has_mine) {
     if(tile.bomb_exploded)
       src_rect = &textures.src_rects.bomb_exploded;
     else
       src_rect = &textures.src_rects.bomb;
   } else if(tile.flagged) {
     src_rect = &textures.src_rects.bomb_false_guess;
-  } else if(tile.num_adjacent_bombs > 0) {
-    src_rect = &textures.src_rects.numbers[tile.num_adjacent_bombs - 1];
+  } else if(tile.num_adjacent_mines > 0) {
+    src_rect = &textures.src_rects.numbers[tile.num_adjacent_mines - 1];
   }
 
   if(src_rect) {

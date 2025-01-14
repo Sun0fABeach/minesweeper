@@ -1,6 +1,8 @@
 #ifndef SHARED_H
 #define SHARED_H
 
+#define DEBUG false
+
 #define NUM_TILES_X_BEGINNER 9
 #define NUM_TILES_Y_BEGINNER 9
 #define NUM_TILES_X_INTERMEDIATE 16
@@ -42,8 +44,8 @@ static constexpr difficulty_settings_s difficulty_settings[] = {
 };
 
 typedef struct tile {
-  unsigned num_adjacent_bombs: 4;
-  unsigned has_bomb: 1;
+  unsigned num_adjacent_mines: 4;
+  unsigned has_mine: 1;
   unsigned flagged: 1;
   unsigned revealed: 1;
   unsigned bomb_exploded: 1;
