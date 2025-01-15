@@ -13,6 +13,7 @@ void place_mines(void);
 void count_adjacent_mines(int row, int col, int num_rows, int num_cols);
 void register_input_handlers(void);
 void handle_tile_select(tile_coords_s coords);
+void handle_tile_flagging(tile_coords_s coords);
 void reveal_all_mines(void);
 void handle_difficulty_select(difficulty_e selected_difficulty);
 void game_loop(void);
@@ -79,6 +80,7 @@ void register_input_handlers(void)
 {
   ui_register_input_handlers(
     handle_tile_select,
+    handle_tile_flagging,
     handle_difficulty_select
   );
 }
@@ -90,6 +92,9 @@ void handle_tile_select(const tile_coords_s coords)
 
   tile_s *const tile = &game_state.tiles[coords.y][coords.x];
 
+  if(tile->flagged)
+    return;
+
   tile->revealed = true;
   if(tile->has_mine) {
     tile->mine_exploded = true;
@@ -98,12 +103,26 @@ void handle_tile_select(const tile_coords_s coords)
   }
 }
 
+void handle_tile_flagging(const tile_coords_s coords)
+{
+  if(game_state.game_over)
+    return;
+
+  tile_s *const tile = &game_state.tiles[coords.y][coords.x];
+
+  if(!tile->revealed)
+    tile->flagged = !tile->flagged;
+}
+
 void reveal_all_mines(void)
 {
-  for(int row = 0; row < NUM_TILES_Y_EXPERT; row++)
-    for(int col = 0; col < NUM_TILES_X_EXPERT; col++)
-      if(game_state.tiles[row][col].has_mine)
-        game_state.tiles[row][col].revealed = true;
+  for(int row = 0; row < NUM_TILES_Y_EXPERT; row++) {
+    for(int col = 0; col < NUM_TILES_X_EXPERT; col++) {
+      tile_s *const tile = &game_state.tiles[row][col];
+      if(!tile->revealed)
+        tile->revealed = tile->flagged ^ tile->has_mine;
+    }
+  }
 }
 
 void handle_difficulty_select(const difficulty_e selected_difficulty)

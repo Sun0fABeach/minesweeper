@@ -66,6 +66,7 @@ static int game_x, game_y;
 
 static struct {
   void (*select_tile)(tile_coords_s tile_coords);
+  void (*flag_tile)(tile_coords_s tile_coords);
   void (*change_difficulty)(difficulty_e selected_difficulty);
 } input_callbacks;
 
@@ -211,7 +212,7 @@ static void draw_board_tiles(
     const int col = pressed_tile.coords.x;
     const int row = pressed_tile.coords.y;
 
-    if(!tiles[row][col].revealed)
+    if(!tiles[row][col].revealed && !tiles[row][col].flagged)
       draw_tile_revealed(
         board_x + TILE_WIDTH * col,
         board_y + TILE_HEIGHT * row,
@@ -358,10 +359,12 @@ static void draw_tile_revealed(
 
 void ui_register_input_handlers(
   void select_tile(tile_coords_s tile_coords),
+  void flag_tile(tile_coords_s tile_coords),
   void change_difficulty(difficulty_e selected_difficulty)
 )
 {
   input_callbacks.select_tile = select_tile;
+  input_callbacks.flag_tile = flag_tile;
   input_callbacks.change_difficulty = change_difficulty;
 }
 
@@ -377,7 +380,8 @@ static void check_tile_select_input(void)
 
   if(
     !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-    !IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
+    !IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+    !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)
   )
     return;
 
@@ -406,8 +410,10 @@ static void check_tile_select_input(void)
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
     pressed_tile.coords = tile_coords;
     pressed_tile.active = true;
-  } else {
+  } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
     input_callbacks.select_tile(tile_coords);
+  } else {
+    input_callbacks.flag_tile(tile_coords);
   }
 }
 
