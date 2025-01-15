@@ -48,11 +48,11 @@ typedef struct tile {
   unsigned has_mine: 1;
   unsigned flagged: 1;
   unsigned revealed: 1;
-  unsigned bomb_exploded: 1;
+  unsigned mine_exploded: 1;
 } tile_s;
 
 typedef struct game_state {
-  // other stuff
+  bool game_over;
   tile_s tiles[NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT];
 } game_state_s;
 

@@ -15,9 +15,9 @@ typedef struct textures {
     Rectangle smiley_excited;
     Rectangle smiley_cool;
     Rectangle smiley_dead;
-    Rectangle bomb;
-    Rectangle bomb_exploded;
-    Rectangle bomb_false_guess;
+    Rectangle mine;
+    Rectangle mine_exploded;
+    Rectangle mine_false_guess;
     Rectangle flag;
   } src_rects;
 } textures_s;
