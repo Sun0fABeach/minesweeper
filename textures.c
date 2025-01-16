@@ -13,6 +13,10 @@ textures_s textures = {
   .src_rects.mine_exploded = { 103, 52, 15, 15 },
   .src_rects.mine_false_guess = { 120, 52, 15, 15 },
   .src_rects.flag = { 36, 53, 12, 12 },
+  .src_rects.smiley = { 4, 28, 19, 19 },
+  .src_rects.smiley_excited = { 58, 28, 19, 19 },
+  .src_rects.smiley_cool = { 85, 28, 19, 19 },
+  .src_rects.smiley_dead = { 112, 28, 19, 19 }
 };
 
 void textures_load(void)

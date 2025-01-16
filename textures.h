@@ -11,14 +11,14 @@ typedef struct textures {
   const struct {
     Rectangle numbers[8];
     Rectangle numbers_digital[10];
-    Rectangle smiley;
-    Rectangle smiley_excited;
-    Rectangle smiley_cool;
-    Rectangle smiley_dead;
     Rectangle mine;
     Rectangle mine_exploded;
     Rectangle mine_false_guess;
     Rectangle flag;
+    Rectangle smiley;
+    Rectangle smiley_excited;
+    Rectangle smiley_cool;
+    Rectangle smiley_dead;
   } src_rects;
 } textures_s;
 

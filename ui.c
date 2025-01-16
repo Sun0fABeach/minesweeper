@@ -10,14 +10,19 @@ typedef enum tile_variant {
 
 static void init_layout_dimensions(difficulty_e difficulty);
 static void draw_game_frame(void);
-static void draw_info_box(void);
+static void draw_info_box(const game_state_s *game_state);
+static void draw_smiley(
+  int info_box_x,
+  int info_box_y,
+  const game_state_s *game_state
+);
 static void draw_board(
   const tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 static void draw_board_tiles(
   const tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
-static void draw_tile_with_shadow_with_content(
+static void draw_board_tile_with_shadow(
   int pos_x, int pos_y,
   int width, int height,
   tile_variant_e variant,
@@ -28,7 +33,7 @@ static void draw_tile_with_shadow(
   int width, int height,
   tile_variant_e variant
 );
-static void draw_tile_revealed_with_content(
+static void draw_board_tile_revealed(
   int pos_x, int pos_y,
   int width, int height,
   tile_s tile
@@ -36,6 +41,7 @@ static void draw_tile_revealed_with_content(
 static void draw_tile_revealed(int pos_x, int pos_y, int width, int height);
 
 static void check_tile_select_input(void);
+static void check_smiley_input(void);
 static void check_difficulty_change_input(void);
 
 
@@ -46,8 +52,12 @@ static void check_difficulty_change_input(void);
 #define TILE_WIDTH (TILE_WIDTH_INNER + TILE_BORDER_THICKNESS*2)
 #define TILE_HEIGHT (TILE_HEIGHT_INNER + TILE_BORDER_THICKNESS*2)
 #define GAME_FRAME_PADDING 8
+#define SMILEY_WIDTH_INNER 32
+#define SMILEY_HEIGHT_INNER 32
+#define SMILEY_WIDTH (SMILEY_WIDTH_INNER + TILE_BORDER_THICKNESS*2 + 2)
+#define SMILEY_HEIGHT (SMILEY_HEIGHT_INNER + TILE_BORDER_THICKNESS*2 + 2)
 #define INFO_BOX_MARGIN_BOTTOM GAME_FRAME_PADDING
-#define INFO_BOX_HEIGHT (46 + TILE_BORDER_THICKNESS*2)
+#define INFO_BOX_HEIGHT (50 + TILE_BORDER_THICKNESS*2)
 
 /* dynamic ui element sizes */
 static int num_tiles_y;
@@ -67,9 +77,11 @@ static int game_x, game_y;
 static struct {
   void (*select_tile)(tile_coords_s tile_coords);
   void (*flag_tile)(tile_coords_s tile_coords);
+  void (*press_smiley)(void);
   void (*change_difficulty)(difficulty_e selected_difficulty);
 } input_callbacks;
 
+static bool pressed_smiley;
 static struct {
   tile_coords_s coords;
   bool active;
@@ -130,7 +142,7 @@ void ui_draw_game(const game_state_s game_state[const static 1])
   BeginDrawing();
     ClearBackground(background_grey);
     draw_game_frame();
-    draw_info_box();
+    draw_info_box(game_state);
     draw_board(game_state->tiles);
 	EndDrawing();
 }
@@ -144,7 +156,7 @@ static void draw_game_frame(void)
   );
 }
 
-static void draw_info_box(void)
+static void draw_info_box(const game_state_s *const game_state)
 {
   const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
   const int pos_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
@@ -154,6 +166,58 @@ static void draw_info_box(void)
     info_box_width, INFO_BOX_HEIGHT,
     INSET
   );
+  draw_smiley(pos_x, pos_y, game_state);
+}
+
+static void draw_smiley(
+  const int info_box_x,
+  const int info_box_y,
+  const game_state_s *const game_state
+)
+{
+  const int pos_x = info_box_x + (info_box_width - SMILEY_WIDTH) / 2;
+  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
+
+  DrawRectangle(pos_x, pos_y, SMILEY_WIDTH, SMILEY_HEIGHT, shadow_grey);
+
+  if(pressed_smiley) {
+    draw_tile_revealed(
+      pos_x + 1,
+      pos_y + 1,
+      SMILEY_WIDTH - 2,
+      SMILEY_HEIGHT - 2
+    );
+    DrawTexturePro(
+      textures.sprite_atlas,
+      textures.src_rects.smiley,
+      (Rectangle) {
+        pos_x + 1 + TILE_BORDER_THICKNESS*2,
+        pos_y + 1 + TILE_BORDER_THICKNESS*2,
+        SMILEY_WIDTH_INNER,
+        SMILEY_HEIGHT_INNER
+      },
+      (Vector2) { 0, 0 }, 0, WHITE
+    );
+  } else {
+    draw_tile_with_shadow(
+      pos_x + 1,
+      pos_y + 1,
+      SMILEY_WIDTH - 2,
+      SMILEY_HEIGHT - 2,
+      PROTRUDING
+    );
+    DrawTexturePro(
+      textures.sprite_atlas,
+      textures.src_rects.smiley,
+      (Rectangle) {
+        pos_x + 1 + TILE_BORDER_THICKNESS,
+        pos_y + 1 + TILE_BORDER_THICKNESS,
+        SMILEY_WIDTH_INNER,
+        SMILEY_HEIGHT_INNER
+      },
+      (Vector2) { 0, 0 }, 0, WHITE
+    );
+  }
 }
 
 static void draw_board(
@@ -190,15 +254,13 @@ static void draw_board_tiles(
       const int tile_x = board_x + TILE_WIDTH * col;
 
       if(tiles[row][col].revealed) {
-        draw_tile_revealed_with_content(
-          tile_x,
-          tile_y,
-          TILE_WIDTH,
-          TILE_HEIGHT,
+        draw_board_tile_revealed(
+          tile_x, tile_y,
+          TILE_WIDTH, TILE_HEIGHT,
           tiles[row][col]
         );
       } else {
-        draw_tile_with_shadow_with_content(
+        draw_board_tile_with_shadow(
           tile_x, tile_y,
           TILE_WIDTH, TILE_HEIGHT,
           PROTRUDING,
@@ -221,7 +283,7 @@ static void draw_board_tiles(
   }
 }
 
-static void draw_tile_with_shadow_with_content(
+static void draw_board_tile_with_shadow(
   const int pos_x,
   const int pos_y,
   const int width,
@@ -310,7 +372,7 @@ static void draw_tile_with_shadow(
   );
 }
 
-static void draw_tile_revealed_with_content(
+static void draw_board_tile_revealed(
   const int pos_x,
   const int pos_y,
   const int width,
@@ -360,17 +422,20 @@ static void draw_tile_revealed(
 void ui_register_input_handlers(
   void select_tile(tile_coords_s tile_coords),
   void flag_tile(tile_coords_s tile_coords),
+  void press_smiley(void),
   void change_difficulty(difficulty_e selected_difficulty)
 )
 {
   input_callbacks.select_tile = select_tile;
   input_callbacks.flag_tile = flag_tile;
+  input_callbacks.press_smiley = press_smiley;
   input_callbacks.change_difficulty = change_difficulty;
 }
 
 void ui_handle_inputs(void)
 {
   check_tile_select_input();
+  check_smiley_input();
   check_difficulty_change_input();
 }
 
@@ -415,6 +480,39 @@ static void check_tile_select_input(void)
   } else {
     input_callbacks.flag_tile(tile_coords);
   }
+}
+
+static void check_smiley_input(void)
+{
+  pressed_smiley = false;
+
+  if(
+    !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+    !IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
+  )
+    return;
+
+  const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
+    (info_box_width - SMILEY_WIDTH) / 2;
+  const int pos_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
+    (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
+
+  const Rectangle smiley_rect = {
+    .x = pos_x,
+    .y = pos_y,
+    .width = SMILEY_WIDTH,
+    .height = SMILEY_HEIGHT
+  };
+
+  const Vector2 mouse_pos = GetMousePosition();
+
+  if(!CheckCollisionPointRec(mouse_pos, smiley_rect))
+    return;
+
+  if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+    pressed_smiley = true;
+  else
+    input_callbacks.press_smiley();
 }
 
 static void check_difficulty_change_input(void)

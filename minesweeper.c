@@ -23,6 +23,7 @@ void handle_tile_flagging(tile_coords_s coords);
 void reveal_mineless_space(int row, int col);
 void reveal_all_mines(void);
 adjacent_space_s get_adjacent_space(int row, int col);
+void handle_smiley_press(void);
 void handle_difficulty_select(difficulty_e selected_difficulty);
 void game_loop(void);
 
@@ -46,6 +47,7 @@ int main(void)
 void init_game_state(void)
 {
   game_state.game_over = false;
+  game_state.won = false;
   memset(game_state.tiles, 0, sizeof(game_state.tiles));
   place_mines();
 
@@ -85,6 +87,7 @@ void register_input_handlers(void)
   ui_register_input_handlers(
     handle_tile_select,
     handle_tile_flagging,
+    handle_smiley_press,
     handle_difficulty_select
   );
 }
@@ -119,6 +122,11 @@ void handle_tile_flagging(const tile_coords_s coords)
 
   if(!tile->revealed)
     tile->flagged = !tile->flagged;
+}
+
+void handle_smiley_press(void)
+{
+  init_game_state();
 }
 
 void reveal_mineless_space(const int row, const int col)
