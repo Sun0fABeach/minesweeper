@@ -22,6 +22,7 @@ textures_s textures = {
 void textures_load(void)
 {
   textures.sprite_atlas = LoadTexture("assets/sprite_atlas.png");
+  SetTextureFilter(textures.sprite_atlas, TEXTURE_FILTER_BILINEAR);
 }
 
 void textures_unload(void)
