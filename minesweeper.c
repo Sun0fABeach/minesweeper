@@ -150,7 +150,7 @@ void reveal_mineless_space(const int row, const int col)
       if(!(y == row && x == col)) {
         tile_s *const adjacent_tile = &game_state.tiles[y][x];
 
-        if(!adjacent_tile->revealed) {
+        if(!adjacent_tile->revealed && !adjacent_tile->flagged) {
           adjacent_tile->revealed = true;
           game_state.remaining_tiles--;
           if(adjacent_tile->num_adjacent_mines == 0) {
