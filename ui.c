@@ -54,8 +54,11 @@ static void check_difficulty_change_input(void);
 #define GAME_FRAME_PADDING 8
 #define SMILEY_WIDTH_INNER 32
 #define SMILEY_HEIGHT_INNER 32
-#define SMILEY_WIDTH (SMILEY_WIDTH_INNER + TILE_BORDER_THICKNESS*2 + 2)
-#define SMILEY_HEIGHT (SMILEY_HEIGHT_INNER + TILE_BORDER_THICKNESS*2 + 2)
+#define SMILEY_PADDING 2
+#define SMILEY_WIDTH (SMILEY_WIDTH_INNER + 2 + TILE_BORDER_THICKNESS*2 + \
+    SMILEY_PADDING*2)
+#define SMILEY_HEIGHT (SMILEY_HEIGHT_INNER + 2 + TILE_BORDER_THICKNESS*2 + \
+    SMILEY_PADDING*2)
 #define INFO_BOX_MARGIN_BOTTOM GAME_FRAME_PADDING
 #define INFO_BOX_HEIGHT (50 + TILE_BORDER_THICKNESS*2)
 
@@ -189,8 +192,8 @@ static void draw_smiley(
       SMILEY_WIDTH - 2,
       SMILEY_HEIGHT - 2
     );
-    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS*2;
-    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS*2;
+    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS*2 + SMILEY_PADDING;
+    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS*2 + SMILEY_PADDING;
     src_rect = textures.src_rects.smiley;
   } else {
     draw_tile_with_shadow(
@@ -200,8 +203,8 @@ static void draw_smiley(
       SMILEY_HEIGHT - 2,
       PROTRUDING
     );
-    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS;
-    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS;
+    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
+    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
     if(game_state->won)
       src_rect = textures.src_rects.smiley_cool;
     else if(game_state->game_over)
