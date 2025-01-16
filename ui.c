@@ -177,6 +177,8 @@ static void draw_smiley(
 {
   const int pos_x = info_box_x + (info_box_width - SMILEY_WIDTH) / 2;
   const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
+  int texture_x, texture_y;
+  Rectangle src_rect;
 
   DrawRectangle(pos_x, pos_y, SMILEY_WIDTH, SMILEY_HEIGHT, shadow_grey);
 
@@ -187,17 +189,9 @@ static void draw_smiley(
       SMILEY_WIDTH - 2,
       SMILEY_HEIGHT - 2
     );
-    DrawTexturePro(
-      textures.sprite_atlas,
-      textures.src_rects.smiley,
-      (Rectangle) {
-        pos_x + 1 + TILE_BORDER_THICKNESS*2,
-        pos_y + 1 + TILE_BORDER_THICKNESS*2,
-        SMILEY_WIDTH_INNER,
-        SMILEY_HEIGHT_INNER
-      },
-      (Vector2) { 0, 0 }, 0, WHITE
-    );
+    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS*2;
+    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS*2;
+    src_rect = textures.src_rects.smiley;
   } else {
     draw_tile_with_shadow(
       pos_x + 1,
@@ -206,18 +200,26 @@ static void draw_smiley(
       SMILEY_HEIGHT - 2,
       PROTRUDING
     );
-    DrawTexturePro(
-      textures.sprite_atlas,
-      textures.src_rects.smiley,
-      (Rectangle) {
-        pos_x + 1 + TILE_BORDER_THICKNESS,
-        pos_y + 1 + TILE_BORDER_THICKNESS,
-        SMILEY_WIDTH_INNER,
-        SMILEY_HEIGHT_INNER
-      },
-      (Vector2) { 0, 0 }, 0, WHITE
-    );
+    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS;
+    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS;
+    if(game_state->won)
+      src_rect = textures.src_rects.smiley_cool;
+    else if(game_state->game_over)
+      src_rect = textures.src_rects.smiley_dead;
+    else if(pressed_tile.active)
+      src_rect = textures.src_rects.smiley_excited;
+    else
+      src_rect = textures.src_rects.smiley;
   }
+
+  DrawTexturePro(
+    textures.sprite_atlas,
+    src_rect,
+    (Rectangle) {
+      texture_x, texture_y, SMILEY_WIDTH_INNER, SMILEY_HEIGHT_INNER
+    },
+    (Vector2) { 0, 0 }, 0, WHITE
+  );
 }
 
 static void draw_board(
@@ -399,7 +401,7 @@ static void draw_board_tile_revealed(
     DrawTexturePro(
       textures.sprite_atlas,
       *src_rect,
-      (Rectangle) { pos_x + 1, pos_y + 1, width - 2, height - 2 },
+      (Rectangle) { pos_x + 1, pos_y + 1, width - 1, height - 1 },
       (Vector2) { 0, 0 }, 0, WHITE
     );
   }

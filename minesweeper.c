@@ -15,13 +15,14 @@ void reveal_all_tiles(void);
 #endif
 
 void init_game_state(void);
-void place_mines(void);
+void place_mines(int num_rows, int num_cols, int num_mines);
 void count_adjacent_mines(int row, int col);
 void register_input_handlers(void);
 void handle_tile_select(tile_coords_s coords);
 void handle_tile_flagging(tile_coords_s coords);
 void reveal_mineless_space(int row, int col);
 void reveal_all_mines(void);
+void flag_all_mines(void);
 adjacent_space_s get_adjacent_space(int row, int col);
 void handle_smiley_press(void);
 void handle_difficulty_select(difficulty_e selected_difficulty);
@@ -46,23 +47,27 @@ int main(void)
 
 void init_game_state(void)
 {
+  memset(game_state.tiles, 0, sizeof(game_state.tiles));
+
+  const difficulty_settings_s config = difficulty_settings[current_difficulty];
+  game_state.remaining_tiles =
+    config.num_tiles_x * config.num_tiles_y - config.num_mines;
   game_state.game_over = false;
   game_state.won = false;
-  memset(game_state.tiles, 0, sizeof(game_state.tiles));
-  place_mines();
+
+  place_mines(config.num_tiles_y, config.num_tiles_x, config.num_mines);
 
 #if DEBUG
   reveal_all_tiles();
 #endif
 }
 
-void place_mines(void)
+void place_mines(const int num_rows, const int num_cols, const int num_mines)
 {
-  const difficulty_settings_s config = difficulty_settings[current_difficulty];
 
-  for(int placed_mines = 0; placed_mines < config.num_mines;) {
-    const int row = rand() % config.num_tiles_y;
-    const int col = rand() % config.num_tiles_x;
+  for(int placed_mines = 0; placed_mines < num_mines;) {
+    const int row = rand() % num_rows;
+    const int col = rand() % num_cols;
     if(game_state.tiles[row][col].has_mine)
       continue;
     game_state.tiles[row][col].has_mine = true;
@@ -99,17 +104,24 @@ void handle_tile_select(const tile_coords_s coords)
 
   tile_s *const tile = &game_state.tiles[coords.y][coords.x];
 
-  if(tile->flagged)
+  if(tile->flagged || tile->revealed)
     return;
 
   tile->revealed = true;
+  game_state.remaining_tiles--;
 
   if(tile->has_mine) {
     tile->mine_exploded = true;
     game_state.game_over = true;
     reveal_all_mines();
-  } else if(tile->num_adjacent_mines == 0) {
-    reveal_mineless_space(coords.y, coords.x);
+  } else {
+    if(tile->num_adjacent_mines == 0)
+      reveal_mineless_space(coords.y, coords.x);
+    if(game_state.remaining_tiles == 0) {
+      game_state.game_over = true;
+      game_state.won = true;
+      flag_all_mines();
+    }
   }
 }
 
@@ -140,6 +152,7 @@ void reveal_mineless_space(const int row, const int col)
 
         if(!adjacent_tile->revealed) {
           adjacent_tile->revealed = true;
+          game_state.remaining_tiles--;
           if(adjacent_tile->num_adjacent_mines == 0) {
             reveal_mineless_space(y, x);
           }
@@ -151,11 +164,26 @@ void reveal_mineless_space(const int row, const int col)
 
 void reveal_all_mines(void)
 {
-  for(int row = 0; row < NUM_TILES_Y_EXPERT; row++) {
-    for(int col = 0; col < NUM_TILES_X_EXPERT; col++) {
+  const difficulty_settings_s config = difficulty_settings[current_difficulty];
+
+  for(int row = 0; row < config.num_tiles_y; row++) {
+    for(int col = 0; col < config.num_tiles_x; col++) {
       tile_s *const tile = &game_state.tiles[row][col];
       if(!tile->revealed)
         tile->revealed = tile->flagged ^ tile->has_mine;
+    }
+  }
+}
+
+void flag_all_mines(void)
+{
+  const difficulty_settings_s config = difficulty_settings[current_difficulty];
+
+  for(int row = 0; row < config.num_tiles_y; row++) {
+    for(int col = 0; col < config.num_tiles_x; col++) {
+      tile_s *const tile = &game_state.tiles[row][col];
+      if(tile->has_mine && !tile->flagged)
+        tile->flagged = true;
     }
   }
 }
