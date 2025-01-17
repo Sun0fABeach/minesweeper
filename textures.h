@@ -3,9 +3,6 @@
 
 #include "raylib.h"
 
-void textures_load(void);
-void textures_unload(void);
-
 typedef struct textures {
   Texture2D sprite_atlas;
   const struct {
@@ -24,5 +21,22 @@ typedef struct textures {
 } textures_s;
 
 extern textures_s textures;
+
+void textures_load(void);
+void textures_unload(void);
+
+static inline void draw_from_texture_atlas(
+  const Rectangle src_rect,
+  const int x, const int y,
+  const int width, const int height
+)
+{
+  DrawTexturePro(
+    textures.sprite_atlas,
+    src_rect,
+    (Rectangle) { x, y, width, height },
+    (Vector2) { 0, 0 }, 0, WHITE
+  );
+}
 
 #endif
