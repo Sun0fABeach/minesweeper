@@ -8,7 +8,7 @@ typedef enum tile_variant {
   PROTRUDING,
 } tile_variant_e;
 
-static void init_layout_dimensions(difficulty_e difficulty);
+static void init_layout_dimensions(int rows, int cols);
 static void draw_game_frame(void);
 static void draw_info_box(const game_state_s *game_state);
 static void draw_remaining_mines_indicator(
@@ -76,8 +76,8 @@ static void check_difficulty_change_input(void);
 #define INFO_BOX_DIGIT_PADDING_X INFO_BOX_DIGIT_PADDING_Y
 
 /* dynamic ui element sizes */
-static int num_tiles_y;
-static int num_tiles_x;
+static int num_rows;
+static int num_cols;
 static int board_inner_width;
 static int board_inner_height;
 static int board_width;
@@ -91,25 +91,25 @@ static Color shadow_grey;
 static int game_x, game_y;
 
 static struct {
-  void (*select_tile)(tile_coords_s tile_coords);
-  void (*flag_tile)(tile_coords_s tile_coords);
+  void (*select_tile)(int row, int col);
+  void (*flag_tile)(int row, int col);
   void (*press_smiley)(void);
   void (*change_difficulty)(difficulty_e selected_difficulty);
 } input_callbacks;
 
 static bool pressed_smiley;
 static struct {
-  tile_coords_s coords;
+  int row, col;
   bool active;
 } pressed_tile;
 
 
-void ui_init(const difficulty_e difficulty)
+void ui_init(const int num_rows, const int num_cols)
 {
   background_grey = ColorFromHSV(0, 0, 0.75);
   shadow_grey = ColorFromHSV(0, 0, 0.48);
 
-  init_layout_dimensions(difficulty);
+  init_layout_dimensions(num_rows, num_cols);
 
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(game_frame_width, game_frame_height, "Minesweeper");
@@ -124,18 +124,18 @@ void ui_deinit(void)
   CloseWindow();
 }
 
-void ui_change_difficulty(const difficulty_e difficulty)
+void ui_change_difficulty(const int num_rows, const int num_cols)
 {
-  init_layout_dimensions(difficulty);
+  init_layout_dimensions(num_rows, num_cols);
   SetWindowSize(game_frame_width, game_frame_height);
 }
 
-static void init_layout_dimensions(const difficulty_e difficulty)
+static void init_layout_dimensions(const int rows, const int cols)
 {
-  num_tiles_x = difficulty_settings[difficulty].num_tiles_x;
-  num_tiles_y = difficulty_settings[difficulty].num_tiles_y;
-  board_inner_width = TILE_WIDTH * num_tiles_x;
-  board_inner_height = TILE_HEIGHT * num_tiles_y;
+  num_rows = rows;
+  num_cols = cols;
+  board_inner_width = TILE_WIDTH * num_cols;
+  board_inner_height = TILE_HEIGHT * num_rows;
   board_width = board_inner_width + TILE_BORDER_THICKNESS*2;
   board_height = board_inner_height + TILE_BORDER_THICKNESS*2;
   info_box_width = board_width;
@@ -182,12 +182,8 @@ static void draw_info_box(const game_state_s *const game_state)
     info_box_width, INFO_BOX_HEIGHT,
     INSET
   );
-  draw_remaining_mines_indicator(
-    pos_x, pos_y, game_state->num_mines - game_state->flagged_tiles
-  );
-  draw_time_indicator(
-    pos_x, pos_y, game_state->elapsed_time_secs
-  );
+  draw_remaining_mines_indicator(pos_x, pos_y, game_state->remaining_flags);
+  draw_time_indicator(pos_x, pos_y, game_state->elapsed_time_secs);
   draw_smiley(pos_x, pos_y, game_state);
 }
 
@@ -340,10 +336,10 @@ static void draw_board_tiles(
   const int board_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
     INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM + TILE_BORDER_THICKNESS;
 
-  for(int row = 0; row < num_tiles_y; row++) {
+  for(int row = 0; row < num_rows; row++) {
     const int tile_y = board_y + TILE_HEIGHT * row;
 
-    for(int col = 0; col < num_tiles_x; col++) {
+    for(int col = 0; col < num_cols; col++) {
       const int tile_x = board_x + TILE_WIDTH * col;
 
       if(tiles[row][col].revealed) {
@@ -364,8 +360,8 @@ static void draw_board_tiles(
   }
 
   if(pressed_tile.active) {
-    const int col = pressed_tile.coords.x;
-    const int row = pressed_tile.coords.y;
+    const int col = pressed_tile.col;
+    const int row = pressed_tile.row;
 
     if(!tiles[row][col].revealed && !tiles[row][col].flagged)
       draw_tile_revealed(
@@ -513,8 +509,8 @@ static void draw_tile_revealed(
 /*** INPUT LOGIC ***/
 
 void ui_register_input_handlers(
-  void select_tile(tile_coords_s tile_coords),
-  void flag_tile(tile_coords_s tile_coords),
+  void select_tile(int row, int col),
+  void flag_tile(int row, int col),
   void press_smiley(void),
   void change_difficulty(difficulty_e selected_difficulty)
 )
@@ -560,18 +556,17 @@ static void check_tile_select_input(void)
   if(!CheckCollisionPointRec(mouse_pos, board_rect))
     return;
 
-  const tile_coords_s tile_coords = {
-    .x = ((int)mouse_pos.x - board_x) / TILE_WIDTH,
-    .y = ((int)mouse_pos.y - board_y) / TILE_HEIGHT
-  };
+  const int row = ((int)mouse_pos.y - board_y) / TILE_HEIGHT;
+  const int col = ((int)mouse_pos.x - board_x) / TILE_WIDTH;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-    pressed_tile.coords = tile_coords;
+    pressed_tile.row = row;
+    pressed_tile.col = col;
     pressed_tile.active = true;
   } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-    input_callbacks.select_tile(tile_coords);
+    input_callbacks.select_tile(row, col);
   } else {
-    input_callbacks.flag_tile(tile_coords);
+    input_callbacks.flag_tile(row, col);
   }
 }
 

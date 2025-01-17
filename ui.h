@@ -3,15 +3,15 @@
 
 #include "shared.h"
 
-void ui_init(difficulty_e difficulty);
+void ui_init(int num_rows, int num_cols);
 void ui_deinit(void);
-void ui_change_difficulty(difficulty_e difficulty);
+void ui_change_difficulty(int num_rows, int num_cols);
 void ui_draw_game(const game_state_s game_state[static 1]);
 bool ui_should_close(void);
 
 void ui_register_input_handlers(
-  void select_tile(tile_coords_s tile_coords),
-  void flag_tile(tile_coords_s tile_coords),
+  void select_tile(int row, int col),
+  void flag_tile(int row, int col),
   void press_smiley(void),
   void change_difficulty(difficulty_e selected_difficulty)
 );
