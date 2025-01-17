@@ -9,30 +9,28 @@ typedef struct adjacent_space {
   tile_coords_s end;
 } adjacent_space_s;
 
-
+static void init_game_state(void);
+static void place_mines(int num_rows, int num_cols, int num_mines);
+static void count_adjacent_mines(int row, int col);
+static void register_input_handlers(void);
+static void handle_tile_select(tile_coords_s coords);
+static void handle_tile_flagging(tile_coords_s coords);
+static void reveal_mineless_space(int row, int col);
+static void reveal_all_mines(void);
+static void flag_all_mines(void);
+static adjacent_space_s get_adjacent_space(int row, int col);
+static void handle_smiley_press(void);
+static void handle_difficulty_select(difficulty_e selected_difficulty);
+static void game_loop(void);
+static void update_timer(void);
 #if DEBUG
-void reveal_all_tiles(void);
+static void reveal_all_tiles(void);
 #endif
 
-void init_game_state(void);
-void place_mines(int num_rows, int num_cols, int num_mines);
-void count_adjacent_mines(int row, int col);
-void register_input_handlers(void);
-void handle_tile_select(tile_coords_s coords);
-void handle_tile_flagging(tile_coords_s coords);
-void reveal_mineless_space(int row, int col);
-void reveal_all_mines(void);
-void flag_all_mines(void);
-adjacent_space_s get_adjacent_space(int row, int col);
-void handle_smiley_press(void);
-void handle_difficulty_select(difficulty_e selected_difficulty);
-void game_loop(void);
-void update_timer(void);
-
-bool timer_active;
-time_t start_time;
-difficulty_e current_difficulty = EXPERT;
-game_state_s game_state;
+static bool timer_active;
+static time_t start_time;
+static difficulty_e current_difficulty = EXPERT;
+static game_state_s game_state;
 
 
 int main(void)
@@ -48,7 +46,7 @@ int main(void)
   return EXIT_SUCCESS;
 }
 
-void init_game_state(void)
+static void init_game_state(void)
 {
   memset(game_state.tiles, 0, sizeof(game_state.tiles));
 
@@ -69,7 +67,9 @@ void init_game_state(void)
 #endif
 }
 
-void place_mines(const int num_rows, const int num_cols, const int num_mines)
+static void place_mines(
+  const int num_rows, const int num_cols, const int num_mines
+)
 {
 
   for(int placed_mines = 0; placed_mines < num_mines;) {
@@ -84,7 +84,7 @@ void place_mines(const int num_rows, const int num_cols, const int num_mines)
   }
 }
 
-void count_adjacent_mines(const int row, const int col)
+static void count_adjacent_mines(const int row, const int col)
 {
   const adjacent_space_s adjacent_space = get_adjacent_space(row, col);
 
@@ -94,7 +94,7 @@ void count_adjacent_mines(const int row, const int col)
         game_state.tiles[y][x].num_adjacent_mines++;
 }
 
-void register_input_handlers(void)
+static void register_input_handlers(void)
 {
   ui_register_input_handlers(
     handle_tile_select,
@@ -104,7 +104,7 @@ void register_input_handlers(void)
   );
 }
 
-void handle_tile_select(const tile_coords_s coords)
+static void handle_tile_select(const tile_coords_s coords)
 {
   if(game_state.game_over)
     return;
@@ -139,7 +139,7 @@ void handle_tile_select(const tile_coords_s coords)
   }
 }
 
-void handle_tile_flagging(const tile_coords_s coords)
+static void handle_tile_flagging(const tile_coords_s coords)
 {
   if(game_state.game_over)
     return;
@@ -157,12 +157,12 @@ void handle_tile_flagging(const tile_coords_s coords)
   }
 }
 
-void handle_smiley_press(void)
+static void handle_smiley_press(void)
 {
   init_game_state();
 }
 
-void reveal_mineless_space(const int row, const int col)
+static void reveal_mineless_space(const int row, const int col)
 {
   const adjacent_space_s adjacent_space = get_adjacent_space(row, col);
 
@@ -183,7 +183,7 @@ void reveal_mineless_space(const int row, const int col)
   }
 }
 
-void reveal_all_mines(void)
+static void reveal_all_mines(void)
 {
   const difficulty_settings_s config = difficulty_settings[current_difficulty];
 
@@ -196,7 +196,7 @@ void reveal_all_mines(void)
   }
 }
 
-void flag_all_mines(void)
+static void flag_all_mines(void)
 {
   const difficulty_settings_s config = difficulty_settings[current_difficulty];
 
@@ -226,7 +226,7 @@ adjacent_space_s get_adjacent_space(const int row, const int col)
   };
 }
 
-void handle_difficulty_select(const difficulty_e selected_difficulty)
+static void handle_difficulty_select(const difficulty_e selected_difficulty)
 {
   if(selected_difficulty == current_difficulty)
     return;
@@ -236,7 +236,7 @@ void handle_difficulty_select(const difficulty_e selected_difficulty)
   ui_change_difficulty(current_difficulty);
 }
 
-void game_loop(void)
+static void game_loop(void)
 {
   while(true) {
     if(ui_should_close())
@@ -247,14 +247,14 @@ void game_loop(void)
 	}
 }
 
-void update_timer(void)
+static void update_timer(void)
 {
   if(timer_active)
     game_state.elapsed_time_secs = difftime(time(NULL), start_time);
 }
 
 #if DEBUG
-void reveal_all_tiles(void)
+static void reveal_all_tiles(void)
 {
   for (int row = 0; row < NUM_TILES_Y_EXPERT; row++)
     for (int col = 0; col < NUM_TILES_X_EXPERT; col++)
