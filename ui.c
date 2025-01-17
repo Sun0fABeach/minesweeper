@@ -11,6 +11,13 @@ typedef enum tile_variant {
 static void init_layout_dimensions(difficulty_e difficulty);
 static void draw_game_frame(void);
 static void draw_info_box(const game_state_s *game_state);
+static void draw_remaining_mines_indicator(
+  int board_x, int board_y, int remaining_mines
+);
+static void draw_time_indicator(
+  int info_box_x, int info_box_y, int elapsed_secs
+);
+static void draw_info_box_indicator(int start_x, int start_y, int value);
 static void draw_smiley(
   int info_box_x,
   int info_box_y,
@@ -46,8 +53,8 @@ static void check_difficulty_change_input(void);
 
 
 /* fixed ui element sizes */
-#define TILE_WIDTH_INNER 18
-#define TILE_HEIGHT_INNER 18
+#define TILE_WIDTH_INNER 20
+#define TILE_HEIGHT_INNER 20
 #define TILE_BORDER_THICKNESS 2
 #define TILE_WIDTH (TILE_WIDTH_INNER + TILE_BORDER_THICKNESS*2)
 #define TILE_HEIGHT (TILE_HEIGHT_INNER + TILE_BORDER_THICKNESS*2)
@@ -56,11 +63,17 @@ static void check_difficulty_change_input(void);
 #define SMILEY_HEIGHT_INNER 32
 #define SMILEY_PADDING 2
 #define SMILEY_WIDTH (SMILEY_WIDTH_INNER + 2 + TILE_BORDER_THICKNESS*2 + \
-    SMILEY_PADDING*2)
+  SMILEY_PADDING*2)
 #define SMILEY_HEIGHT (SMILEY_HEIGHT_INNER + 2 + TILE_BORDER_THICKNESS*2 + \
-    SMILEY_PADDING*2)
+  SMILEY_PADDING*2)
 #define INFO_BOX_MARGIN_BOTTOM GAME_FRAME_PADDING
-#define INFO_BOX_HEIGHT (50 + TILE_BORDER_THICKNESS*2)
+#define INFO_BOX_HEIGHT_INNER 50
+#define INFO_BOX_HEIGHT (INFO_BOX_HEIGHT_INNER + TILE_BORDER_THICKNESS*2)
+#define INFO_BOX_DIGIT_WIDTH 20
+#define INFO_BOX_DIGIT_HEIGHT 36
+#define INFO_BOX_DIGIT_PADDING_Y \
+  ((INFO_BOX_HEIGHT_INNER - INFO_BOX_DIGIT_HEIGHT) / 2)
+#define INFO_BOX_DIGIT_PADDING_X INFO_BOX_DIGIT_PADDING_Y
 
 /* dynamic ui element sizes */
 static int num_tiles_y;
@@ -169,7 +182,82 @@ static void draw_info_box(const game_state_s *const game_state)
     info_box_width, INFO_BOX_HEIGHT,
     INSET
   );
+  draw_remaining_mines_indicator(
+    pos_x, pos_y, game_state->num_mines - game_state->flagged_tiles
+  );
+  draw_time_indicator(
+    pos_x, pos_y, game_state->elapsed_time_secs
+  );
   draw_smiley(pos_x, pos_y, game_state);
+}
+
+static void draw_remaining_mines_indicator(
+  const int info_box_x, const int info_box_y, const int remaining_mines
+)
+{
+  const int start_x = info_box_x + TILE_BORDER_THICKNESS +
+    INFO_BOX_DIGIT_PADDING_X;
+  const int start_y = info_box_y + TILE_BORDER_THICKNESS +
+    INFO_BOX_DIGIT_PADDING_Y;
+
+  draw_info_box_indicator(start_x, start_y, remaining_mines);
+}
+
+static void draw_time_indicator(
+  const int info_box_x, const int info_box_y, const int elapsed_secs
+)
+{
+  const int start_x = info_box_x + info_box_width - TILE_BORDER_THICKNESS -
+    INFO_BOX_DIGIT_PADDING_X - INFO_BOX_DIGIT_WIDTH*3;
+  const int start_y = info_box_y + TILE_BORDER_THICKNESS +
+    INFO_BOX_DIGIT_PADDING_Y;
+
+  draw_info_box_indicator(start_x, start_y, elapsed_secs);
+}
+
+static void draw_info_box_indicator(
+  const int start_x, const int start_y, int value
+)
+{
+  int n, digit_pos;
+
+  if(value < 0) {
+    n = 10;
+    digit_pos = 1;
+    value = -value;
+    if(value > 99)
+      value = 99;
+
+    DrawTexturePro(
+      textures.sprite_atlas,
+      textures.src_rects.digital_minus,
+      (Rectangle) {
+        start_x, start_y, INFO_BOX_DIGIT_WIDTH, INFO_BOX_DIGIT_HEIGHT
+      },
+      (Vector2) { 0, 0 }, 0, WHITE
+    );
+  } else {
+    n = 100;
+    digit_pos = 0;
+    if(value > 999)
+      value = 999;
+  }
+
+  for(;n > 0; n /= 10, digit_pos++) {
+    DrawTexturePro(
+      textures.sprite_atlas,
+      textures.src_rects.numbers_digital[value / n],
+      (Rectangle) {
+        start_x + INFO_BOX_DIGIT_WIDTH * digit_pos,
+        start_y,
+        INFO_BOX_DIGIT_WIDTH,
+        INFO_BOX_DIGIT_HEIGHT
+      },
+      (Vector2) { 0, 0 }, 0, WHITE
+    );
+
+    value %= n;
+  }
 }
 
 static void draw_smiley(

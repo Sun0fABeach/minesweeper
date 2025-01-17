@@ -54,7 +54,10 @@ typedef struct tile {
 typedef struct game_state {
   bool game_over;
   bool won;
+  int elapsed_time_secs;
   int remaining_tiles;
+  int flagged_tiles;
+  int num_mines;
   tile_s tiles[NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT];
 } game_state_s;
 

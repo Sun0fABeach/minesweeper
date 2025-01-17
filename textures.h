@@ -11,6 +11,7 @@ typedef struct textures {
   const struct {
     Rectangle numbers[8];
     Rectangle numbers_digital[10];
+    Rectangle digital_minus;
     Rectangle mine;
     Rectangle mine_exploded;
     Rectangle mine_false_guess;

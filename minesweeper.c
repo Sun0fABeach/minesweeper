@@ -27,7 +27,10 @@ adjacent_space_s get_adjacent_space(int row, int col);
 void handle_smiley_press(void);
 void handle_difficulty_select(difficulty_e selected_difficulty);
 void game_loop(void);
+void update_timer(void);
 
+bool timer_active;
+time_t start_time;
 difficulty_e current_difficulty = EXPERT;
 game_state_s game_state;
 
@@ -50,10 +53,14 @@ void init_game_state(void)
   memset(game_state.tiles, 0, sizeof(game_state.tiles));
 
   const difficulty_settings_s config = difficulty_settings[current_difficulty];
+  game_state.num_mines = config.num_mines;
   game_state.remaining_tiles =
     config.num_tiles_x * config.num_tiles_y - config.num_mines;
+  game_state.flagged_tiles = 0;
   game_state.game_over = false;
   game_state.won = false;
+  game_state.elapsed_time_secs = 0;
+  timer_active = false;
 
   place_mines(config.num_tiles_y, config.num_tiles_x, config.num_mines);
 
@@ -110,9 +117,15 @@ void handle_tile_select(const tile_coords_s coords)
   tile->revealed = true;
   game_state.remaining_tiles--;
 
+  if(!timer_active) {
+    timer_active = true;
+    start_time = time(NULL);
+  }
+
   if(tile->has_mine) {
     tile->mine_exploded = true;
     game_state.game_over = true;
+    timer_active = false;
     reveal_all_mines();
   } else {
     if(tile->num_adjacent_mines == 0)
@@ -120,6 +133,7 @@ void handle_tile_select(const tile_coords_s coords)
     if(game_state.remaining_tiles == 0) {
       game_state.game_over = true;
       game_state.won = true;
+      timer_active = false;
       flag_all_mines();
     }
   }
@@ -132,8 +146,15 @@ void handle_tile_flagging(const tile_coords_s coords)
 
   tile_s *const tile = &game_state.tiles[coords.y][coords.x];
 
-  if(!tile->revealed)
-    tile->flagged = !tile->flagged;
+  if(!tile->revealed) {
+    if(tile->flagged) {
+      tile->flagged = false;
+      game_state.flagged_tiles--;
+    } else {
+      tile->flagged = true;
+      game_state.flagged_tiles++;
+    }
+  }
 }
 
 void handle_smiley_press(void)
@@ -221,8 +242,15 @@ void game_loop(void)
     if(ui_should_close())
       return;
     ui_handle_inputs();
+    update_timer();
     ui_draw_game(&game_state);
 	}
+}
+
+void update_timer(void)
+{
+  if(timer_active)
+    game_state.elapsed_time_secs = difftime(time(NULL), start_time);
 }
 
 #if DEBUG
