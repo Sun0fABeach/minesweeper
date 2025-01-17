@@ -1,6 +1,8 @@
-#include <stddef.h>
 #include "ui.h"
 #include "tile.h"
+#include "smiley.h"
+#include "digital_digits.h"
+#include "board_tile.h"
 #include "textures.h"
 
 static void init_layout_dimensions(int rows, int cols);
@@ -12,27 +14,15 @@ static void draw_remaining_mines_indicator(
 static void draw_time_indicator(
   int info_box_x, int info_box_y, int elapsed_secs
 );
-static void draw_info_box_indicator(int start_x, int start_y, int value);
 static void draw_smiley(
   int info_box_x, int info_box_y,
   const game_state_s *game_state
 );
 static void draw_board(
-  const tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 static void draw_board_tiles(
-  const tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
-);
-static void draw_board_tile_with_shadow(
-  int pos_x, int pos_y,
-  int width, int height,
-  tile_variant_e variant,
-  tile_s tile
-);
-static void draw_board_tile_revealed(
-  int pos_x, int pos_y,
-  int width, int height,
-  tile_s tile
+  const board_tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 
 static void check_tile_select_input(void);
@@ -41,23 +31,10 @@ static void check_difficulty_change_input(void);
 
 
 /* fixed ui element sizes */
-#define BOARD_TILE_WIDTH_INNER 20
-#define BOARD_TILE_HEIGHT_INNER 20
-#define BOARD_TILE_WIDTH (BOARD_TILE_WIDTH_INNER + TILE_BORDER_THICKNESS*2)
-#define BOARD_TILE_HEIGHT (BOARD_TILE_HEIGHT_INNER + TILE_BORDER_THICKNESS*2)
 #define GAME_FRAME_PADDING 8
-#define SMILEY_WIDTH_INNER 32
-#define SMILEY_HEIGHT_INNER 32
-#define SMILEY_PADDING 2
-#define SMILEY_WIDTH (SMILEY_WIDTH_INNER + 2 + TILE_BORDER_THICKNESS*2 + \
-  SMILEY_PADDING*2)
-#define SMILEY_HEIGHT (SMILEY_HEIGHT_INNER + 2 + TILE_BORDER_THICKNESS*2 + \
-  SMILEY_PADDING*2)
 #define INFO_BOX_MARGIN_BOTTOM GAME_FRAME_PADDING
 #define INFO_BOX_HEIGHT_INNER 50
 #define INFO_BOX_HEIGHT (INFO_BOX_HEIGHT_INNER + TILE_BORDER_THICKNESS*2)
-#define INFO_BOX_DIGIT_WIDTH 20
-#define INFO_BOX_DIGIT_HEIGHT 36
 #define INFO_BOX_DIGIT_PADDING_Y \
   ((INFO_BOX_HEIGHT_INNER - INFO_BOX_DIGIT_HEIGHT) / 2)
 #define INFO_BOX_DIGIT_PADDING_X INFO_BOX_DIGIT_PADDING_Y
@@ -174,7 +151,7 @@ static void draw_remaining_mines_indicator(
   const int start_y = info_box_y + TILE_BORDER_THICKNESS +
     INFO_BOX_DIGIT_PADDING_Y;
 
-  draw_info_box_indicator(start_x, start_y, remaining_mines);
+  digital_digits_draw(start_x, start_y, remaining_mines);
 }
 
 static void draw_time_indicator(
@@ -186,45 +163,7 @@ static void draw_time_indicator(
   const int start_y = info_box_y + TILE_BORDER_THICKNESS +
     INFO_BOX_DIGIT_PADDING_Y;
 
-  draw_info_box_indicator(start_x, start_y, elapsed_secs);
-}
-
-static void draw_info_box_indicator(
-  const int start_x, const int start_y, int value
-)
-{
-  int n, digit_pos;
-
-  if(value < 0) {
-    n = 10;
-    digit_pos = 1;
-    value = -value;
-    if(value > 99)
-      value = 99;
-
-    draw_from_texture_atlas(
-      textures.src_rects.digital_minus,
-      start_x, start_y,
-      INFO_BOX_DIGIT_WIDTH, INFO_BOX_DIGIT_HEIGHT
-    );
-  } else {
-    n = 100;
-    digit_pos = 0;
-    if(value > 999)
-      value = 999;
-  }
-
-  for(;n > 0; n /= 10, digit_pos++) {
-    draw_from_texture_atlas(
-      textures.src_rects.numbers_digital[value / n],
-      start_x + INFO_BOX_DIGIT_WIDTH * digit_pos,
-      start_y,
-      INFO_BOX_DIGIT_WIDTH,
-      INFO_BOX_DIGIT_HEIGHT
-    );
-
-    value %= n;
-  }
+  digital_digits_draw(start_x, start_y, elapsed_secs);
 }
 
 static void draw_smiley(
@@ -234,50 +173,20 @@ static void draw_smiley(
 {
   const int pos_x = info_box_x + (info_box_width - SMILEY_WIDTH) / 2;
   const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
-  int texture_x, texture_y;
-  Rectangle src_rect;
 
-  DrawRectangle(pos_x, pos_y, SMILEY_WIDTH, SMILEY_HEIGHT, shadow_grey);
+  smiley_type_e type = SMILEY_HAPPY;
+  if(game_state->won)
+    type = SMILEY_COOL;
+  else if(game_state->game_over)
+    type = SMILEY_DEAD;
+  else if(pressed_tile.active)
+    type = SMILEY_EXCITED;
 
-  if(pressed_smiley) {
-    tile_draw_revealed(
-      pos_x + 1,
-      pos_y + 1,
-      SMILEY_WIDTH - 2,
-      SMILEY_HEIGHT - 2
-    );
-    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS*2 + SMILEY_PADDING;
-    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS*2 + SMILEY_PADDING;
-    src_rect = textures.src_rects.smiley;
-  } else {
-    tile_draw_with_shadow(
-      pos_x + 1,
-      pos_y + 1,
-      SMILEY_WIDTH - 2,
-      SMILEY_HEIGHT - 2,
-      PROTRUDING
-    );
-    texture_x = pos_x + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
-    texture_y = pos_y + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
-    if(game_state->won)
-      src_rect = textures.src_rects.smiley_cool;
-    else if(game_state->game_over)
-      src_rect = textures.src_rects.smiley_dead;
-    else if(pressed_tile.active)
-      src_rect = textures.src_rects.smiley_excited;
-    else
-      src_rect = textures.src_rects.smiley;
-  }
-
-  draw_from_texture_atlas(
-    src_rect,
-    texture_x, texture_y,
-    SMILEY_WIDTH_INNER, SMILEY_HEIGHT_INNER
-  );
+  smiley_draw(pos_x, pos_y, type, pressed_smiley);
 }
 
 static void draw_board(
-  const tile_s tiles[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s tiles[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
   const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
@@ -295,7 +204,7 @@ static void draw_board(
 }
 
 static void draw_board_tiles(
-  const tile_s tiles[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s tiles[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
   const int board_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
@@ -310,15 +219,10 @@ static void draw_board_tiles(
       const int tile_x = board_x + BOARD_TILE_WIDTH * col;
 
       if(tiles[row][col].revealed) {
-        draw_board_tile_revealed(
-          tile_x, tile_y,
-          BOARD_TILE_WIDTH, BOARD_TILE_HEIGHT,
-          tiles[row][col]
-        );
+        board_tile_draw_revealed(tile_x, tile_y, tiles[row][col]);
       } else {
-        draw_board_tile_with_shadow(
+        board_tile_draw_with_shadow(
           tile_x, tile_y,
-          BOARD_TILE_WIDTH, BOARD_TILE_HEIGHT,
           PROTRUDING,
           tiles[row][col]
         );
@@ -336,56 +240,6 @@ static void draw_board_tiles(
         board_y + BOARD_TILE_HEIGHT * row,
         BOARD_TILE_WIDTH, BOARD_TILE_HEIGHT
       );
-  }
-}
-
-static void draw_board_tile_with_shadow(
-  const int pos_x, const int pos_y,
-  const int width, const int height,
-  const tile_variant_e variant,
-  const tile_s tile
-)
-{
-  tile_draw_with_shadow(pos_x, pos_y, width, height, variant);
-
-  if(tile.flagged) {
-    draw_from_texture_atlas(
-      textures.src_rects.flag,
-      pos_x + TILE_BORDER_THICKNESS,
-      pos_y + TILE_BORDER_THICKNESS,
-      width - TILE_BORDER_THICKNESS*2,
-      height - TILE_BORDER_THICKNESS*2
-    );
-  }
-}
-
-static void draw_board_tile_revealed(
-  const int pos_x, const int pos_y,
-  const int width, const int height,
-  const tile_s tile
-)
-{
-  tile_draw_revealed(pos_x, pos_y, width, height);
-
-  const Rectangle *src_rect = NULL;
-
-  if(tile.has_mine) {
-    if(tile.mine_exploded)
-      src_rect = &textures.src_rects.mine_exploded;
-    else
-      src_rect = &textures.src_rects.mine;
-  } else if(tile.flagged) {
-    src_rect = &textures.src_rects.mine_false_guess;
-  } else if(tile.num_adjacent_mines > 0) {
-    src_rect = &textures.src_rects.numbers[tile.num_adjacent_mines - 1];
-  }
-
-  if(src_rect) {
-    draw_from_texture_atlas(
-      *src_rect,
-      pos_x + 1, pos_y + 1,
-      width - 1, height - 1
-    );
   }
 }
 

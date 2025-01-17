@@ -132,7 +132,7 @@ static void handle_tile_select(const int row, const int col)
   if(game_state.game_over)
     return;
 
-  tile_s *const tile = &game_state.tiles[row][col];
+  board_tile_s *const tile = &game_state.tiles[row][col];
 
   if(tile->flagged || tile->revealed)
     return;
@@ -167,7 +167,7 @@ static void handle_tile_flagging(const int row, const int col)
   if(game_state.game_over)
     return;
 
-  tile_s *const tile = &game_state.tiles[row][col];
+  board_tile_s *const tile = &game_state.tiles[row][col];
 
   if(!tile->revealed) {
     if(tile->flagged) {
@@ -194,7 +194,7 @@ static void reveal_mineless_space(const int row, const int col)
       if(y == row && x == col)
         continue;
 
-      tile_s *const adjacent_tile = &game_state.tiles[y][x];
+      board_tile_s *const adjacent_tile = &game_state.tiles[y][x];
 
       if(!adjacent_tile->revealed && !adjacent_tile->flagged) {
         adjacent_tile->revealed = true;
@@ -210,7 +210,7 @@ static void reveal_all_mines(void)
 {
   for(int row = 0; row < difficulty->num_rows; row++) {
     for(int col = 0; col < difficulty->num_cols; col++) {
-      tile_s *const tile = &game_state.tiles[row][col];
+      board_tile_s *const tile = &game_state.tiles[row][col];
       if(!tile->revealed)
         tile->revealed = tile->flagged ^ tile->has_mine;
     }
@@ -221,7 +221,7 @@ static void flag_all_mines(void)
 {
   for(int row = 0; row < difficulty->num_rows; row++) {
     for(int col = 0; col < difficulty->num_cols; col++) {
-      tile_s *const tile = &game_state.tiles[row][col];
+      board_tile_s *const tile = &game_state.tiles[row][col];
       if(tile->has_mine && !tile->flagged)
         tile->flagged = true;
     }

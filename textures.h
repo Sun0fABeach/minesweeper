@@ -25,7 +25,7 @@ extern textures_s textures;
 void textures_load(void);
 void textures_unload(void);
 
-static inline void draw_from_texture_atlas(
+static inline void textures_draw_from_atlas(
   const Rectangle src_rect,
   const int x, const int y,
   const int width, const int height

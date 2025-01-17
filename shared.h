@@ -19,20 +19,20 @@ typedef enum difficulty {
   EXPERT
 } difficulty_e;
 
-typedef struct tile {
+typedef struct board_tile {
   unsigned num_adjacent_mines: 4;
   unsigned has_mine: 1;
   unsigned flagged: 1;
   unsigned revealed: 1;
   unsigned mine_exploded: 1;
-} tile_s;
+} board_tile_s;
 
 typedef struct game_state {
   bool game_over;
   bool won;
   int remaining_flags;
   int elapsed_time_secs;
-  tile_s tiles[NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT];
+  board_tile_s tiles[NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT];
 } game_state_s;
 
 #endif
