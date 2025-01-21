@@ -4,8 +4,10 @@
 #include "raylib.h"
 
 typedef struct textures {
+  Texture2D cogwheel;
   Texture2D sprite_atlas;
   const struct {
+    Rectangle cogwheel;
     Rectangle numbers[8];
     Rectangle numbers_digital[10];
     Rectangle digital_minus;
@@ -24,6 +26,19 @@ extern textures_s textures;
 
 void textures_load(void);
 void textures_unload(void);
+
+static inline void textures_draw_cogwheel(
+  const int x, const int y,
+  const int width, const int height
+)
+{
+  DrawTexturePro(
+    textures.cogwheel,
+    textures.src_rects.cogwheel,
+    (Rectangle) { x, y, width, height },
+    (Vector2) { 0, 0 }, 0, WHITE
+  );
+}
 
 static inline void textures_draw_from_atlas(
   const Rectangle src_rect,

@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "tile.h"
 #include "smiley.h"
+#include "options.h"
 #include "digital_digits.h"
 #include "board_tile.h"
 #include "textures.h"
@@ -18,6 +19,7 @@ static void draw_smiley(
   int info_box_x, int info_box_y,
   const game_state_s *game_state
 );
+static void draw_options(const int info_box_x, const int info_box_y);
 static void draw_board(
   const board_tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
@@ -25,9 +27,10 @@ static void draw_board_tiles(
   const board_tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 
-static void check_tile_select_input(void);
-static void check_smiley_input(void);
-static void check_difficulty_change_input(void);
+static bool check_tile_select_input(void);
+static bool check_smiley_input(void);
+static bool check_options_open_input(void);
+static bool check_options_input(void);
 
 
 /* fixed ui element sizes */
@@ -35,6 +38,8 @@ static void check_difficulty_change_input(void);
 #define INFO_BOX_MARGIN_BOTTOM GAME_FRAME_PADDING
 #define INFO_BOX_HEIGHT_INNER 50
 #define INFO_BOX_HEIGHT (INFO_BOX_HEIGHT_INNER + TILE_BORDER_THICKNESS*2)
+#define INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT 2
+#define INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP 4
 #define INFO_BOX_DIGIT_PADDING_Y \
   ((INFO_BOX_HEIGHT_INNER - INFO_BOX_DIGIT_HEIGHT) / 2)
 #define INFO_BOX_DIGIT_PADDING_X INFO_BOX_DIGIT_PADDING_Y
@@ -60,6 +65,9 @@ static struct {
 } input_callbacks;
 
 static bool pressed_smiley;
+static bool options_open;
+static bool options_capture_inputs;
+static difficulty_e options_pressed_difficulty;
 static struct {
   int row, col;
   bool active;
@@ -113,8 +121,8 @@ void ui_draw_game(const game_state_s game_state[const static 1])
   BeginDrawing();
     ClearBackground(background_grey);
     draw_game_frame();
-    draw_info_box(game_state);
     draw_board(game_state->tiles);
+    draw_info_box(game_state); // needs to be last to draw
 	EndDrawing();
 }
 
@@ -140,6 +148,7 @@ static void draw_info_box(const game_state_s *const game_state)
   draw_remaining_mines_indicator(pos_x, pos_y, game_state->remaining_flags);
   draw_time_indicator(pos_x, pos_y, game_state->elapsed_time_secs);
   draw_smiley(pos_x, pos_y, game_state);
+  draw_options(pos_x, pos_y);
 }
 
 static void draw_remaining_mines_indicator(
@@ -183,6 +192,16 @@ static void draw_smiley(
     type = SMILEY_EXCITED;
 
   smiley_draw(pos_x, pos_y, type, pressed_smiley);
+}
+
+static void draw_options(const int info_box_x, const int info_box_y)
+{
+  const int pos_x = info_box_x + (info_box_width + SMILEY_WIDTH) / 2 +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
+  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2 +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP;
+
+  options_draw(pos_x, pos_y, options_open, options_pressed_difficulty);
 }
 
 static void draw_board(
@@ -260,54 +279,106 @@ void ui_register_input_handlers(
 
 void ui_handle_inputs(void)
 {
-  check_tile_select_input();
-  check_smiley_input();
-  check_difficulty_change_input();
+  if(options_capture_inputs) {
+    check_options_input();
+  } else {
+    if(!check_tile_select_input())
+      if(!check_smiley_input())
+        check_options_open_input();
+  }
 }
 
-static void check_tile_select_input(void)
+static bool check_options_open_input(void)
 {
-  pressed_tile.active = false;
+  if(!IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    return false;
 
-  if(
-    !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-    !IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-    !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)
-  )
-    return;
+  const int info_box_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
+  const int info_box_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
 
-  const int board_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    TILE_BORDER_THICKNESS;
-  const int board_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM + TILE_BORDER_THICKNESS;
+  const int pos_x = info_box_x + (info_box_width + SMILEY_WIDTH) / 2 +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
+  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2 +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP;
 
-  const Rectangle board_rect = {
-    .x = board_x,
-    .y = board_y,
-    .width = board_inner_width,
-    .height = board_inner_height
+  constexpr int click_surface_padding = 2;
+
+  const Rectangle toggle_rect = {
+    .x = pos_x - click_surface_padding,
+    .y = pos_y - click_surface_padding,
+    .width = OPTIONS_TOGGLE_WIDTH + click_surface_padding * 2,
+    .height = OPTIONS_TOGGLE_HEIGHT + click_surface_padding * 2
   };
 
   const Vector2 mouse_pos = GetMousePosition();
 
-  if(!CheckCollisionPointRec(mouse_pos, board_rect))
-    return;
+  if(!CheckCollisionPointRec(mouse_pos, toggle_rect))
+    return false;
 
-  const int row = ((int)mouse_pos.y - board_y) / BOARD_TILE_HEIGHT;
-  const int col = ((int)mouse_pos.x - board_x) / BOARD_TILE_WIDTH;
-
-  if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-    pressed_tile.row = row;
-    pressed_tile.col = col;
-    pressed_tile.active = true;
-  } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-    input_callbacks.select_tile(row, col);
-  } else {
-    input_callbacks.flag_tile(row, col);
-  }
+  options_open = true;
+  options_capture_inputs = true;
+  options_pressed_difficulty = DIFFICULTY_NONE;
+  return true;
 }
 
-static void check_smiley_input(void)
+static bool check_options_input(void)
+{
+  if(
+    !IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+    !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+    !IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
+  )
+    return false;
+
+  // behavior: left-click outside dropdown closes it visually, but only a
+  // subsequent mouse button release opens the remaining ui for inputs again
+  if(!options_open) {
+    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+      options_capture_inputs = false;
+    return false;
+  }
+
+  const int info_box_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
+  const int info_box_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
+
+  const int pos_x = info_box_x + (info_box_width + SMILEY_WIDTH) / 2 +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT + OPTIONS_DROPDOWN_MARGIN_LEFT;
+  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2 +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP + OPTIONS_TOGGLE_HEIGHT +
+    OPTIONS_DROPDOWN_MARGIN_TOP;
+
+  const Rectangle dropdown_rect = {
+    .x = pos_x + 1, // account for 1 px frame
+    .y = pos_y + 1,
+    .width = OPTIONS_DROPDOWN_WIDTH - 2,
+    .height = OPTIONS_DROPDOWN_HEIGHT - 2
+  };
+
+  const Vector2 mouse_pos = GetMousePosition();
+
+  if(CheckCollisionPointRec(mouse_pos, dropdown_rect)) {
+    const difficulty_e selected_difficulty =
+      (mouse_pos.y - dropdown_rect.y) / OPTIONS_BUTTON_HEIGHT;
+
+    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+      options_pressed_difficulty = selected_difficulty;
+    } else { // can only be released mouse button from here
+      input_callbacks.change_difficulty(selected_difficulty);
+      options_open = false;
+      options_capture_inputs = false;
+      options_pressed_difficulty = DIFFICULTY_NONE;
+    }
+  } else {
+    options_pressed_difficulty = DIFFICULTY_NONE;
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+      options_open = false;
+    return false;
+  }
+
+  return true;
+}
+
+static bool check_smiley_input(void)
 {
   pressed_smiley = false;
 
@@ -315,7 +386,7 @@ static void check_smiley_input(void)
     !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
     !IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
   )
-    return;
+    return false;
 
   const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
     (info_box_width - SMILEY_WIDTH) / 2;
@@ -332,29 +403,57 @@ static void check_smiley_input(void)
   const Vector2 mouse_pos = GetMousePosition();
 
   if(!CheckCollisionPointRec(mouse_pos, smiley_rect))
-    return;
+    return false;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
     pressed_smiley = true;
   else
     input_callbacks.press_smiley();
+
+  return true;
 }
 
-static void check_difficulty_change_input(void)
+static bool check_tile_select_input(void)
 {
-  switch(GetKeyPressed()) {
-    case KEY_NULL:
-      return; // no key pressed
-    case KEY_ONE:
-      input_callbacks.change_difficulty(BEGINNER);
-      break;
-    case KEY_TWO:
-      input_callbacks.change_difficulty(INTERMEDIATE);
-      break;
-    case KEY_THREE:
-      input_callbacks.change_difficulty(EXPERT);
-      break;
-    default:
-      return;
+  pressed_tile.active = false;
+
+  if(
+    !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+    !IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+    !IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)
+  )
+    return false;
+
+  const int board_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
+    TILE_BORDER_THICKNESS;
+  const int board_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
+    INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM + TILE_BORDER_THICKNESS;
+
+  const Rectangle board_rect = {
+    .x = board_x,
+    .y = board_y,
+    .width = board_inner_width,
+    .height = board_inner_height
+  };
+
+  const Vector2 mouse_pos = GetMousePosition();
+
+  if(!CheckCollisionPointRec(mouse_pos, board_rect))
+    return false;
+
+  const int row = ((int)mouse_pos.y - board_y) / BOARD_TILE_HEIGHT;
+  const int col = ((int)mouse_pos.x - board_x) / BOARD_TILE_WIDTH;
+
+  if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    pressed_tile.row = row;
+    pressed_tile.col = col;
+    pressed_tile.active = true;
+  } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    input_callbacks.select_tile(row, col);
+  } else {
+    input_callbacks.flag_tile(row, col);
   }
+
+  return true;
 }
+

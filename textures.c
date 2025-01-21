@@ -1,6 +1,7 @@
 #include "textures.h"
 
 textures_s textures = {
+  .src_rects.cogwheel = { 0, 0, 50, 50 },
   .src_rects.numbers[0] = { 25, 36, 23, 23 },
   .src_rects.numbers[1] = { 49, 36, 23, 23 },
   .src_rects.numbers[2] = { 73, 36, 23, 23 },
@@ -32,6 +33,7 @@ textures_s textures = {
 
 void textures_load(void)
 {
+  textures.cogwheel = LoadTexture("assets/cogwheel.png");
   textures.sprite_atlas = LoadTexture("assets/sprite_atlas.png");
   SetTextureFilter(textures.sprite_atlas, TEXTURE_FILTER_BILINEAR);
 }

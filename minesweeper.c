@@ -245,6 +245,7 @@ static void handle_difficulty_select(const difficulty_e selected_difficulty)
 {
   if(&difficulty_settings[selected_difficulty] == difficulty)
     return;
+
   difficulty = &difficulty_settings[selected_difficulty];
 
   init_game_state();

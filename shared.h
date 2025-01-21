@@ -16,7 +16,8 @@
 typedef enum difficulty {
   BEGINNER,
   INTERMEDIATE,
-  EXPERT
+  EXPERT,
+  DIFFICULTY_NONE
 } difficulty_e;
 
 typedef struct board_tile {
