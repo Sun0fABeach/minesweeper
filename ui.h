@@ -15,9 +15,9 @@ static inline bool ui_should_close(void)
 
 
 void ui_register_input_handlers(
-  void select_tile(int row, int col),
-  void flag_tile(int row, int col),
-  void press_smiley(void),
+  void select_board_tile(int row, int col),
+  void flag_board_tile(int row, int col),
+  void push_smiley(void),
   void change_difficulty(difficulty_e selected_difficulty)
 );
 void ui_handle_inputs(void);

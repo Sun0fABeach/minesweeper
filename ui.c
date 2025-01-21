@@ -21,16 +21,16 @@ static void draw_smiley(
 );
 static void draw_options(const int info_box_x, const int info_box_y);
 static void draw_board(
-  const board_tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 static void draw_board_tiles(
-  const board_tile_s tiles[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 
-static bool check_tile_select_input(void);
+static bool check_board_input(void);
 static bool check_smiley_input(void);
 static bool check_options_open_input(void);
-static bool check_options_input(void);
+static bool check_options_dropdown_input(void);
 
 
 /* fixed ui element sizes */
@@ -58,9 +58,9 @@ static int game_frame_height;
 static int game_x, game_y;
 
 static struct {
-  void (*select_tile)(int row, int col);
-  void (*flag_tile)(int row, int col);
-  void (*press_smiley)(void);
+  void (*select_board_tile)(int row, int col);
+  void (*flag_board_tile)(int row, int col);
+  void (*push_smiley)(void);
   void (*change_difficulty)(difficulty_e selected_difficulty);
 } input_callbacks;
 
@@ -71,7 +71,7 @@ static difficulty_e options_pressed_difficulty;
 static struct {
   int row, col;
   bool active;
-} pressed_tile;
+} pressed_board_tile;
 
 
 void ui_init(const int num_rows, const int num_cols)
@@ -121,7 +121,7 @@ void ui_draw_game(const game_state_s game_state[const static 1])
   BeginDrawing();
     ClearBackground(background_grey);
     draw_game_frame();
-    draw_board(game_state->tiles);
+    draw_board(game_state->board);
     draw_info_box(game_state); // needs to be last to draw
 	EndDrawing();
 }
@@ -188,7 +188,7 @@ static void draw_smiley(
     type = SMILEY_COOL;
   else if(game_state->game_over)
     type = SMILEY_DEAD;
-  else if(pressed_tile.active)
+  else if(pressed_board_tile.active)
     type = SMILEY_EXCITED;
 
   smiley_draw(pos_x, pos_y, type, pressed_smiley);
@@ -205,7 +205,7 @@ static void draw_options(const int info_box_x, const int info_box_y)
 }
 
 static void draw_board(
-  const board_tile_s tiles[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
   const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
@@ -219,11 +219,11 @@ static void draw_board(
     board_height,
     INSET
   );
-  draw_board_tiles(tiles);
+  draw_board_tiles(board);
 }
 
 static void draw_board_tiles(
-  const board_tile_s tiles[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
+  const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
   const int board_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
@@ -237,23 +237,23 @@ static void draw_board_tiles(
     for(int col = 0; col < num_cols; col++) {
       const int tile_x = board_x + BOARD_TILE_WIDTH * col;
 
-      if(tiles[row][col].revealed) {
-        board_tile_draw_revealed(tile_x, tile_y, tiles[row][col]);
+      if(board[row][col].revealed) {
+        board_tile_draw_revealed(tile_x, tile_y, board[row][col]);
       } else {
         board_tile_draw_with_shadow(
           tile_x, tile_y,
           PROTRUDING,
-          tiles[row][col]
+          board[row][col]
         );
       }
     }
   }
 
-  if(pressed_tile.active) {
-    const int col = pressed_tile.col;
-    const int row = pressed_tile.row;
+  if(pressed_board_tile.active) {
+    const int col = pressed_board_tile.col;
+    const int row = pressed_board_tile.row;
 
-    if(!tiles[row][col].revealed && !tiles[row][col].flagged)
+    if(!board[row][col].revealed && !board[row][col].flagged)
       tile_draw_revealed(
         board_x + BOARD_TILE_WIDTH * col,
         board_y + BOARD_TILE_HEIGHT * row,
@@ -265,24 +265,24 @@ static void draw_board_tiles(
 /*** INPUT LOGIC ***/
 
 void ui_register_input_handlers(
-  void select_tile(int row, int col),
-  void flag_tile(int row, int col),
-  void press_smiley(void),
+  void select_board_tile(int row, int col),
+  void flag_board_tile(int row, int col),
+  void push_smiley(void),
   void change_difficulty(difficulty_e selected_difficulty)
 )
 {
-  input_callbacks.select_tile = select_tile;
-  input_callbacks.flag_tile = flag_tile;
-  input_callbacks.press_smiley = press_smiley;
+  input_callbacks.select_board_tile = select_board_tile;
+  input_callbacks.flag_board_tile = flag_board_tile;
+  input_callbacks.push_smiley = push_smiley;
   input_callbacks.change_difficulty = change_difficulty;
 }
 
 void ui_handle_inputs(void)
 {
   if(options_capture_inputs) {
-    check_options_input();
+    check_options_dropdown_input();
   } else {
-    if(!check_tile_select_input())
+    if(!check_board_input())
       if(!check_smiley_input())
         check_options_open_input();
   }
@@ -321,7 +321,7 @@ static bool check_options_open_input(void)
   return true;
 }
 
-static bool check_options_input(void)
+static bool check_options_dropdown_input(void)
 {
   if(
     !IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
@@ -408,14 +408,14 @@ static bool check_smiley_input(void)
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
     pressed_smiley = true;
   else
-    input_callbacks.press_smiley();
+    input_callbacks.push_smiley();
 
   return true;
 }
 
-static bool check_tile_select_input(void)
+static bool check_board_input(void)
 {
-  pressed_tile.active = false;
+  pressed_board_tile.active = false;
 
   if(
     !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -445,13 +445,13 @@ static bool check_tile_select_input(void)
   const int col = ((int)mouse_pos.x - board_x) / BOARD_TILE_WIDTH;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-    pressed_tile.row = row;
-    pressed_tile.col = col;
-    pressed_tile.active = true;
+    pressed_board_tile.row = row;
+    pressed_board_tile.col = col;
+    pressed_board_tile.active = true;
   } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-    input_callbacks.select_tile(row, col);
+    input_callbacks.select_board_tile(row, col);
   } else {
-    input_callbacks.flag_tile(row, col);
+    input_callbacks.flag_board_tile(row, col);
   }
 
   return true;

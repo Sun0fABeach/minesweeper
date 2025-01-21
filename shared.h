@@ -33,7 +33,7 @@ typedef struct game_state {
   bool won;
   int remaining_flags;
   int elapsed_time_secs;
-  board_tile_s tiles[NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT];
+  board_tile_s board[NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT];
 } game_state_s;
 
 #endif
