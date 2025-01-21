@@ -7,19 +7,13 @@
 #include "textures.h"
 
 static void init_layout_dimensions(int rows, int cols);
+static void set_ui_element_offsets(void);
 static void draw_game_frame(void);
 static void draw_info_box(const game_state_s *game_state);
-static void draw_remaining_mines_indicator(
-  int board_x, int board_y, int remaining_mines
-);
-static void draw_time_indicator(
-  int info_box_x, int info_box_y, int elapsed_secs
-);
-static void draw_smiley(
-  int info_box_x, int info_box_y,
-  const game_state_s *game_state
-);
-static void draw_options(const int info_box_x, const int info_box_y);
+static void draw_remaining_mines_indicator(int remaining_mines);
+static void draw_time_indicator(int elapsed_secs);
+static void draw_smiley(const game_state_s *game_state);
+static void draw_options(void);
 static void draw_board(
   const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
@@ -56,6 +50,10 @@ static int game_frame_width;
 static int game_frame_height;
 
 static int game_x, game_y;
+static int info_box_x, info_box_y;
+static int board_x, board_y;
+static int smiley_x, smiley_y;
+static int options_toggle_x, options_toggle_y;
 
 static struct {
   void (*select_board_tile)(int row, int col);
@@ -115,8 +113,7 @@ static void init_layout_dimensions(const int rows, const int cols)
 
 void ui_draw_game(const game_state_s game_state[const static 1])
 {
-  game_x = (GetScreenWidth() - game_frame_width)/2;
-  game_y = (GetScreenHeight() - game_frame_height)/2;
+  set_ui_element_offsets();
 
   BeginDrawing();
     ClearBackground(background_grey);
@@ -124,6 +121,21 @@ void ui_draw_game(const game_state_s game_state[const static 1])
     draw_board(game_state->board);
     draw_info_box(game_state); // needs to be last to draw
 	EndDrawing();
+}
+
+void set_ui_element_offsets(void)
+{
+  game_x = (GetScreenWidth() - game_frame_width)/2;
+  game_y = (GetScreenHeight() - game_frame_height)/2;
+  info_box_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
+  info_box_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
+  smiley_x = info_box_x + (info_box_width - SMILEY_WIDTH) / 2;
+  smiley_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
+  options_toggle_x = smiley_x + SMILEY_WIDTH + INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
+  options_toggle_y = smiley_y + INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP;
+  board_x = info_box_x;
+  board_y = info_box_y + INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM;
+
 }
 
 static void draw_game_frame(void)
@@ -137,23 +149,18 @@ static void draw_game_frame(void)
 
 static void draw_info_box(const game_state_s *const game_state)
 {
-  const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-  const int pos_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-
   tile_draw_with_shadow(
-    pos_x, pos_y,
+    info_box_x, info_box_y,
     info_box_width, INFO_BOX_HEIGHT,
     INSET
   );
-  draw_remaining_mines_indicator(pos_x, pos_y, game_state->remaining_flags);
-  draw_time_indicator(pos_x, pos_y, game_state->elapsed_time_secs);
-  draw_smiley(pos_x, pos_y, game_state);
-  draw_options(pos_x, pos_y);
+  draw_remaining_mines_indicator(game_state->remaining_flags);
+  draw_time_indicator(game_state->elapsed_time_secs);
+  draw_smiley(game_state);
+  draw_options();
 }
 
-static void draw_remaining_mines_indicator(
-  const int info_box_x, const int info_box_y, const int remaining_mines
-)
+static void draw_remaining_mines_indicator(const int remaining_mines)
 {
   const int start_x = info_box_x + TILE_BORDER_THICKNESS +
     INFO_BOX_DIGIT_PADDING_X;
@@ -163,9 +170,7 @@ static void draw_remaining_mines_indicator(
   digital_digits_draw(start_x, start_y, remaining_mines);
 }
 
-static void draw_time_indicator(
-  const int info_box_x, const int info_box_y, const int elapsed_secs
-)
+static void draw_time_indicator(const int elapsed_secs)
 {
   const int start_x = info_box_x + info_box_width - TILE_BORDER_THICKNESS -
     INFO_BOX_DIGIT_PADDING_X - INFO_BOX_DIGIT_WIDTH*3;
@@ -175,14 +180,8 @@ static void draw_time_indicator(
   digital_digits_draw(start_x, start_y, elapsed_secs);
 }
 
-static void draw_smiley(
-  const int info_box_x, const int info_box_y,
-  const game_state_s *const game_state
-)
+static void draw_smiley(const game_state_s *const game_state)
 {
-  const int pos_x = info_box_x + (info_box_width - SMILEY_WIDTH) / 2;
-  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
-
   smiley_type_e type = SMILEY_HAPPY;
   if(game_state->won)
     type = SMILEY_COOL;
@@ -191,32 +190,23 @@ static void draw_smiley(
   else if(pressed_board_tile.active)
     type = SMILEY_EXCITED;
 
-  smiley_draw(pos_x, pos_y, type, pressed_smiley);
+  smiley_draw(smiley_x, smiley_y, type, pressed_smiley);
 }
 
-static void draw_options(const int info_box_x, const int info_box_y)
+static void draw_options(void)
 {
-  const int pos_x = info_box_x + (info_box_width + SMILEY_WIDTH) / 2 +
-    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
-  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2 +
-    INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP;
-
-  options_draw(pos_x, pos_y, options_open, options_pressed_difficulty);
+  options_draw(
+    options_toggle_x, options_toggle_y, options_open, options_pressed_difficulty
+  );
 }
 
 static void draw_board(
   const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
-  const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-  const int pos_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM;
-
   tile_draw_with_shadow(
-    pos_x,
-    pos_y,
-    board_width,
-    board_height,
+    board_x, board_y,
+    board_width, board_height,
     INSET
   );
   draw_board_tiles(board);
@@ -226,16 +216,14 @@ static void draw_board_tiles(
   const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
-  const int board_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    TILE_BORDER_THICKNESS;
-  const int board_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM + TILE_BORDER_THICKNESS;
+  const int pos_x = board_x + TILE_BORDER_THICKNESS;
+  const int pos_y = board_y + TILE_BORDER_THICKNESS;
 
   for(int row = 0; row < num_rows; row++) {
-    const int tile_y = board_y + BOARD_TILE_HEIGHT * row;
+    const int tile_y = pos_y + BOARD_TILE_HEIGHT * row;
 
     for(int col = 0; col < num_cols; col++) {
-      const int tile_x = board_x + BOARD_TILE_WIDTH * col;
+      const int tile_x = pos_x + BOARD_TILE_WIDTH * col;
 
       if(board[row][col].revealed) {
         board_tile_draw_revealed(tile_x, tile_y, board[row][col]);
@@ -255,8 +243,8 @@ static void draw_board_tiles(
 
     if(!board[row][col].revealed && !board[row][col].flagged)
       tile_draw_revealed(
-        board_x + BOARD_TILE_WIDTH * col,
-        board_y + BOARD_TILE_HEIGHT * row,
+        pos_x + BOARD_TILE_WIDTH * col,
+        pos_y + BOARD_TILE_HEIGHT * row,
         BOARD_TILE_WIDTH, BOARD_TILE_HEIGHT
       );
   }
@@ -293,19 +281,11 @@ static bool check_options_open_input(void)
   if(!IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     return false;
 
-  const int info_box_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-  const int info_box_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-
-  const int pos_x = info_box_x + (info_box_width + SMILEY_WIDTH) / 2 +
-    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
-  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2 +
-    INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP;
-
   constexpr int click_surface_padding = 2;
 
   const Rectangle toggle_rect = {
-    .x = pos_x - click_surface_padding,
-    .y = pos_y - click_surface_padding,
+    .x = options_toggle_x - click_surface_padding,
+    .y = options_toggle_y - click_surface_padding,
     .width = OPTIONS_TOGGLE_WIDTH + click_surface_padding * 2,
     .height = OPTIONS_TOGGLE_HEIGHT + click_surface_padding * 2
   };
@@ -338,13 +318,8 @@ static bool check_options_dropdown_input(void)
     return false;
   }
 
-  const int info_box_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-  const int info_box_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
-
-  const int pos_x = info_box_x + (info_box_width + SMILEY_WIDTH) / 2 +
-    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT + OPTIONS_DROPDOWN_MARGIN_LEFT;
-  const int pos_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2 +
-    INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP + OPTIONS_TOGGLE_HEIGHT +
+  const int pos_x = options_toggle_x + OPTIONS_DROPDOWN_MARGIN_LEFT;
+  const int pos_y = options_toggle_y + OPTIONS_TOGGLE_HEIGHT +
     OPTIONS_DROPDOWN_MARGIN_TOP;
 
   const Rectangle dropdown_rect = {
@@ -388,14 +363,9 @@ static bool check_smiley_input(void)
   )
     return false;
 
-  const int pos_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    (info_box_width - SMILEY_WIDTH) / 2;
-  const int pos_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
-
   const Rectangle smiley_rect = {
-    .x = pos_x,
-    .y = pos_y,
+    .x = smiley_x,
+    .y = smiley_y,
     .width = SMILEY_WIDTH,
     .height = SMILEY_HEIGHT
   };
@@ -424,14 +394,12 @@ static bool check_board_input(void)
   )
     return false;
 
-  const int board_x = game_x + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    TILE_BORDER_THICKNESS;
-  const int board_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING +
-    INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM + TILE_BORDER_THICKNESS;
+  const int pos_x = board_x + TILE_BORDER_THICKNESS;
+  const int pos_y = board_y + TILE_BORDER_THICKNESS;
 
   const Rectangle board_rect = {
-    .x = board_x,
-    .y = board_y,
+    .x = pos_x,
+    .y = pos_y,
     .width = board_inner_width,
     .height = board_inner_height
   };
@@ -441,8 +409,8 @@ static bool check_board_input(void)
   if(!CheckCollisionPointRec(mouse_pos, board_rect))
     return false;
 
-  const int row = ((int)mouse_pos.y - board_y) / BOARD_TILE_HEIGHT;
-  const int col = ((int)mouse_pos.x - board_x) / BOARD_TILE_WIDTH;
+  const int row = ((int)mouse_pos.y - pos_y) / BOARD_TILE_HEIGHT;
+  const int col = ((int)mouse_pos.x - pos_x) / BOARD_TILE_WIDTH;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
     pressed_board_tile.row = row;
