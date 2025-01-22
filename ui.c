@@ -21,10 +21,13 @@ static void draw_board_tiles(
   const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 
-static bool check_board_input(void);
-static bool check_smiley_input(void);
 static bool check_options_open_input(void);
 static bool check_options_dropdown_input(void);
+static bool check_smiley_input(void);
+static bool check_board_input(void);
+static bool board_has_mouse_collision(
+  int start_x, int start_y, Vector2 mouse_pos
+);
 
 
 /* fixed ui element sizes */
@@ -281,18 +284,9 @@ static bool check_options_open_input(void)
   if(!IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     return false;
 
-  constexpr int click_surface_padding = 2;
-
-  const Rectangle toggle_rect = {
-    .x = options_toggle_x - click_surface_padding,
-    .y = options_toggle_y - click_surface_padding,
-    .width = OPTIONS_TOGGLE_WIDTH + click_surface_padding * 2,
-    .height = OPTIONS_TOGGLE_HEIGHT + click_surface_padding * 2
-  };
-
-  const Vector2 mouse_pos = GetMousePosition();
-
-  if(!CheckCollisionPointRec(mouse_pos, toggle_rect))
+  if(!options_toggle_has_mouse_collision(
+    options_toggle_x, options_toggle_y, GetMousePosition()
+  ))
     return false;
 
   options_open = true;
@@ -322,18 +316,11 @@ static bool check_options_dropdown_input(void)
   const int pos_y = options_toggle_y + OPTIONS_TOGGLE_HEIGHT +
     OPTIONS_DROPDOWN_MARGIN_TOP;
 
-  const Rectangle dropdown_rect = {
-    .x = pos_x + 1, // account for 1 px frame
-    .y = pos_y + 1,
-    .width = OPTIONS_DROPDOWN_WIDTH - 2,
-    .height = OPTIONS_DROPDOWN_HEIGHT - 2
-  };
-
   const Vector2 mouse_pos = GetMousePosition();
 
-  if(CheckCollisionPointRec(mouse_pos, dropdown_rect)) {
+  if(options_dropdown_has_mouse_collision(pos_x, pos_y, mouse_pos)) {
     const difficulty_e selected_difficulty =
-      (mouse_pos.y - dropdown_rect.y) / OPTIONS_BUTTON_HEIGHT;
+      options_get_selected_difficulty(pos_y, mouse_pos.y);
 
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
       options_pressed_difficulty = selected_difficulty;
@@ -363,16 +350,7 @@ static bool check_smiley_input(void)
   )
     return false;
 
-  const Rectangle smiley_rect = {
-    .x = smiley_x,
-    .y = smiley_y,
-    .width = SMILEY_WIDTH,
-    .height = SMILEY_HEIGHT
-  };
-
-  const Vector2 mouse_pos = GetMousePosition();
-
-  if(!CheckCollisionPointRec(mouse_pos, smiley_rect))
+  if(!smiley_has_mouse_collision(smiley_x, smiley_y, GetMousePosition()))
     return false;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
@@ -396,17 +374,9 @@ static bool check_board_input(void)
 
   const int pos_x = board_x + TILE_BORDER_THICKNESS;
   const int pos_y = board_y + TILE_BORDER_THICKNESS;
-
-  const Rectangle board_rect = {
-    .x = pos_x,
-    .y = pos_y,
-    .width = board_inner_width,
-    .height = board_inner_height
-  };
-
   const Vector2 mouse_pos = GetMousePosition();
 
-  if(!CheckCollisionPointRec(mouse_pos, board_rect))
+  if(!board_has_mouse_collision(pos_x, pos_y, mouse_pos))
     return false;
 
   const int row = ((int)mouse_pos.y - pos_y) / BOARD_TILE_HEIGHT;
@@ -423,5 +393,19 @@ static bool check_board_input(void)
   }
 
   return true;
+}
+
+static bool board_has_mouse_collision(
+  const int start_x, const int start_y, const Vector2 mouse_pos
+)
+{
+  const Rectangle board_rect = {
+    .x = start_x,
+    .y = start_y,
+    .width = board_inner_width,
+    .height = board_inner_height
+  };
+
+  return CheckCollisionPointRec(mouse_pos, board_rect);
 }
 

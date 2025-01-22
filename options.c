@@ -1,8 +1,8 @@
-#include "raylib.h"
 #include "options.h"
 #include "textures.h"
 #include "tile.h"
 
+#define TOGGLE_COLLISION_BOX_PADDING 2
 #define FONT_SIZE 11
 #define TEXT_OFFSET_Y ((OPTIONS_BUTTON_HEIGHT - FONT_SIZE) / 2)
 
@@ -89,4 +89,39 @@ static inline void options_draw_dropdown(
       BLACK
     );
   }
+}
+
+bool options_toggle_has_mouse_collision(
+  const int start_x, const int start_y, const Vector2 mouse_pos
+)
+{
+  const Rectangle toggle_rect = {
+    .x = start_x - TOGGLE_COLLISION_BOX_PADDING,
+    .y = start_y - TOGGLE_COLLISION_BOX_PADDING,
+    .width = OPTIONS_TOGGLE_WIDTH + TOGGLE_COLLISION_BOX_PADDING * 2,
+    .height = OPTIONS_TOGGLE_HEIGHT + TOGGLE_COLLISION_BOX_PADDING * 2
+  };
+
+  return CheckCollisionPointRec(mouse_pos, toggle_rect);
+}
+
+bool options_dropdown_has_mouse_collision(
+  const int start_x, const int start_y, const Vector2 mouse_pos
+)
+{
+  const Rectangle dropdown_rect = {
+    .x = start_x + 1, // account for 1 px frame
+    .y = start_y + 1,
+    .width = OPTIONS_DROPDOWN_WIDTH - 2,
+    .height = OPTIONS_DROPDOWN_HEIGHT - 2
+  };
+
+  return CheckCollisionPointRec(mouse_pos, dropdown_rect);
+}
+
+difficulty_e options_get_selected_difficulty(
+  const int start_y, const int mouse_y
+)
+{
+  return (mouse_y - (start_y + 1)) / OPTIONS_BUTTON_HEIGHT;
 }

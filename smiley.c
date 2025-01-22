@@ -1,4 +1,3 @@
-#include "raylib.h"
 #include "smiley.h"
 #include "textures.h"
 #include "tile.h"
@@ -56,3 +55,18 @@ void smiley_draw(
     SMILEY_WIDTH_INNER, SMILEY_HEIGHT_INNER
   );
 }
+
+bool smiley_has_mouse_collision(
+  const int start_x, const int start_y, const Vector2 mouse_pos
+)
+{
+  const Rectangle smiley_rect = {
+    .x = start_x,
+    .y = start_y,
+    .width = SMILEY_WIDTH,
+    .height = SMILEY_HEIGHT
+  };
+
+  return CheckCollisionPointRec(mouse_pos, smiley_rect);
+}
+

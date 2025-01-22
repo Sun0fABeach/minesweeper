@@ -1,8 +1,8 @@
 #ifndef UI_H
 #define UI_H
 
-#include "shared.h"
 #include "raylib.h"
+#include "shared.h"
 
 void ui_init(int num_rows, int num_cols);
 void ui_deinit(void);
