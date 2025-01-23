@@ -13,7 +13,6 @@ static inline bool ui_should_close(void)
   return WindowShouldClose();
 }
 
-
 void ui_register_input_handlers(
   void select_board_tile(int row, int col),
   void flag_board_tile(int row, int col),

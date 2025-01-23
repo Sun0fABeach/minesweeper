@@ -13,16 +13,15 @@
 #define OPTIONS_DROPDOWN_MARGIN_TOP 2
 #define OPTIONS_DROPDOWN_MARGIN_LEFT 1
 
-void options_draw(
-  int start_x, int start_y, bool is_open, difficulty_e pressed_button
-);
-bool options_toggle_has_mouse_collision(
-  int start_x, int start_y, Vector2 mouse_pos
-);
-bool options_dropdown_has_mouse_collision(
-  int start_x, int start_y, Vector2 mouse_pos
-);
-difficulty_e options_get_selected_difficulty(int start_y, int mouse_y);
+void options_draw(bool is_open, difficulty_e pressed_button);
+bool options_toggle_has_mouse_collision(Vector2 mouse_pos);
+bool options_dropdown_has_mouse_collision(Vector2 mouse_pos);
+difficulty_e options_get_selected_difficulty(int mouse_y);
+
+extern int options_toggle_x;
+extern int options_toggle_y;
+extern int options_dropdown_x;
+extern int options_dropdown_y;
 
 #endif
 

@@ -2,34 +2,35 @@
 #include "textures.h"
 #include "tile.h"
 
-void smiley_draw(
-  int pos_x, int pos_y, const smiley_type_e type, const bool pressed
-)
-{
-  DrawRectangle(pos_x, pos_y, SMILEY_WIDTH, SMILEY_HEIGHT, shadow_grey);
+int smiley_x, smiley_y;
 
+void smiley_draw(const smiley_type_e type, const bool pressed)
+{
+  DrawRectangle(smiley_x, smiley_y, SMILEY_WIDTH, SMILEY_HEIGHT, shadow_grey);
+
+  // account for 1 px frame
+  int texture_x = smiley_x + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
+  int texture_y = smiley_y + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
   Rectangle src_rect;
 
   if(pressed) {
     tile_draw_revealed(
-      pos_x + 1,
-      pos_y + 1,
+      smiley_x + 1,
+      smiley_y + 1,
       SMILEY_WIDTH - 2,
       SMILEY_HEIGHT - 2
     );
-    pos_x += 1 + TILE_BORDER_THICKNESS*2 + SMILEY_PADDING;
-    pos_y += 1 + TILE_BORDER_THICKNESS*2 + SMILEY_PADDING;
+    texture_x += TILE_BORDER_THICKNESS;
+    texture_y += TILE_BORDER_THICKNESS;
     src_rect = textures.src_rects.smiley;
   } else {
     tile_draw_with_shadow(
-      pos_x + 1,
-      pos_y + 1,
+      smiley_x + 1,
+      smiley_y + 1,
       SMILEY_WIDTH - 2,
       SMILEY_HEIGHT - 2,
       PROTRUDING
     );
-    pos_x += 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
-    pos_y += 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
 
     switch(type) {
       case SMILEY_HAPPY:
@@ -51,18 +52,16 @@ void smiley_draw(
 
   textures_draw_from_atlas(
     src_rect,
-    pos_x, pos_y,
+    texture_x, texture_y,
     SMILEY_WIDTH_INNER, SMILEY_HEIGHT_INNER
   );
 }
 
-bool smiley_has_mouse_collision(
-  const int start_x, const int start_y, const Vector2 mouse_pos
-)
+bool smiley_has_mouse_collision(const Vector2 mouse_pos)
 {
   const Rectangle smiley_rect = {
-    .x = start_x,
-    .y = start_y,
+    .x = smiley_x,
+    .y = smiley_y,
     .width = SMILEY_WIDTH,
     .height = SMILEY_HEIGHT
   };

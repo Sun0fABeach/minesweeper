@@ -8,12 +8,12 @@
 
 static void init_layout_dimensions(int rows, int cols);
 static void set_ui_element_offsets(void);
-static void draw_game_frame(void);
+static inline void draw_game_frame(void);
 static void draw_info_box(const game_state_s *game_state);
-static void draw_remaining_mines_indicator(int remaining_mines);
-static void draw_time_indicator(int elapsed_secs);
+static inline void draw_remaining_flags_indicator(int remaining_flags);
+static inline void draw_time_indicator(int elapsed_secs);
 static void draw_smiley(const game_state_s *game_state);
-static void draw_options(void);
+static inline void draw_options(void);
 static void draw_board(
   const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
@@ -55,8 +55,6 @@ static int game_frame_height;
 static int game_x, game_y;
 static int info_box_x, info_box_y;
 static int board_x, board_y;
-static int smiley_x, smiley_y;
-static int options_toggle_x, options_toggle_y;
 
 static struct {
   void (*select_board_tile)(int row, int col);
@@ -134,14 +132,26 @@ void set_ui_element_offsets(void)
   info_box_y = game_y + TILE_BORDER_THICKNESS + GAME_FRAME_PADDING;
   smiley_x = info_box_x + (info_box_width - SMILEY_WIDTH) / 2;
   smiley_y = info_box_y + (INFO_BOX_HEIGHT - SMILEY_HEIGHT) / 2;
-  options_toggle_x = smiley_x + SMILEY_WIDTH + INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
+  options_toggle_x = smiley_x + SMILEY_WIDTH +
+    INFO_BOX_OPTIONS_TOGGLE_MARGIN_LEFT;
   options_toggle_y = smiley_y + INFO_BOX_OPTIONS_TOGGLE_MARGIN_TOP;
+  options_dropdown_x = options_toggle_x + OPTIONS_DROPDOWN_MARGIN_LEFT;
+  options_dropdown_y = options_toggle_y + OPTIONS_TOGGLE_HEIGHT +
+    OPTIONS_DROPDOWN_MARGIN_TOP;
+  digital_digits_remaining_flags_x = info_box_x + TILE_BORDER_THICKNESS +
+    INFO_BOX_DIGIT_PADDING_X;
+  digital_digits_remaining_flags_y = info_box_y + TILE_BORDER_THICKNESS +
+    INFO_BOX_DIGIT_PADDING_Y;
+  digital_digits_time_x = info_box_x + info_box_width - TILE_BORDER_THICKNESS -
+    INFO_BOX_DIGIT_PADDING_X - INFO_BOX_DIGIT_WIDTH*3;
+  digital_digits_time_y = info_box_y + TILE_BORDER_THICKNESS +
+    INFO_BOX_DIGIT_PADDING_Y;
   board_x = info_box_x;
   board_y = info_box_y + INFO_BOX_HEIGHT + INFO_BOX_MARGIN_BOTTOM;
 
 }
 
-static void draw_game_frame(void)
+static inline void draw_game_frame(void)
 {
   tile_draw_with_shadow(
     game_x, game_y,
@@ -157,30 +167,20 @@ static void draw_info_box(const game_state_s *const game_state)
     info_box_width, INFO_BOX_HEIGHT,
     INSET
   );
-  draw_remaining_mines_indicator(game_state->remaining_flags);
+  draw_remaining_flags_indicator(game_state->remaining_flags);
   draw_time_indicator(game_state->elapsed_time_secs);
   draw_smiley(game_state);
   draw_options();
 }
 
-static void draw_remaining_mines_indicator(const int remaining_mines)
+static inline void draw_remaining_flags_indicator(const int remaining_flags)
 {
-  const int start_x = info_box_x + TILE_BORDER_THICKNESS +
-    INFO_BOX_DIGIT_PADDING_X;
-  const int start_y = info_box_y + TILE_BORDER_THICKNESS +
-    INFO_BOX_DIGIT_PADDING_Y;
-
-  digital_digits_draw(start_x, start_y, remaining_mines);
+  digital_digits_draw_remaining_flags(remaining_flags);
 }
 
-static void draw_time_indicator(const int elapsed_secs)
+static inline void draw_time_indicator(const int elapsed_secs)
 {
-  const int start_x = info_box_x + info_box_width - TILE_BORDER_THICKNESS -
-    INFO_BOX_DIGIT_PADDING_X - INFO_BOX_DIGIT_WIDTH*3;
-  const int start_y = info_box_y + TILE_BORDER_THICKNESS +
-    INFO_BOX_DIGIT_PADDING_Y;
-
-  digital_digits_draw(start_x, start_y, elapsed_secs);
+  digital_digits_draw_time(elapsed_secs);
 }
 
 static void draw_smiley(const game_state_s *const game_state)
@@ -193,14 +193,12 @@ static void draw_smiley(const game_state_s *const game_state)
   else if(pressed_board_tile.active)
     type = SMILEY_EXCITED;
 
-  smiley_draw(smiley_x, smiley_y, type, pressed_smiley);
+  smiley_draw(type, pressed_smiley);
 }
 
-static void draw_options(void)
+static inline void draw_options(void)
 {
-  options_draw(
-    options_toggle_x, options_toggle_y, options_open, options_pressed_difficulty
-  );
+  options_draw(options_open, options_pressed_difficulty);
 }
 
 static void draw_board(
@@ -284,9 +282,7 @@ static bool check_options_open_input(void)
   if(!IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     return false;
 
-  if(!options_toggle_has_mouse_collision(
-    options_toggle_x, options_toggle_y, GetMousePosition()
-  ))
+  if(!options_toggle_has_mouse_collision(GetMousePosition()))
     return false;
 
   options_open = true;
@@ -312,15 +308,11 @@ static bool check_options_dropdown_input(void)
     return false;
   }
 
-  const int pos_x = options_toggle_x + OPTIONS_DROPDOWN_MARGIN_LEFT;
-  const int pos_y = options_toggle_y + OPTIONS_TOGGLE_HEIGHT +
-    OPTIONS_DROPDOWN_MARGIN_TOP;
-
   const Vector2 mouse_pos = GetMousePosition();
 
-  if(options_dropdown_has_mouse_collision(pos_x, pos_y, mouse_pos)) {
+  if(options_dropdown_has_mouse_collision(mouse_pos)) {
     const difficulty_e selected_difficulty =
-      options_get_selected_difficulty(pos_y, mouse_pos.y);
+      options_get_selected_difficulty(mouse_pos.y);
 
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
       options_pressed_difficulty = selected_difficulty;
@@ -350,7 +342,7 @@ static bool check_smiley_input(void)
   )
     return false;
 
-  if(!smiley_has_mouse_collision(smiley_x, smiley_y, GetMousePosition()))
+  if(!smiley_has_mouse_collision(GetMousePosition()))
     return false;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))

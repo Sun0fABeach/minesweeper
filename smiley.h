@@ -18,8 +18,11 @@ typedef enum smiley_type {
   SMILEY_COOL
 } smiley_type_e;
 
-void smiley_draw(int pos_x, int pos_y, smiley_type_e type, bool pressed);
-bool smiley_has_mouse_collision(int start_x, int start_y, Vector2 mouse_pos);
+void smiley_draw(smiley_type_e type, bool pressed);
+bool smiley_has_mouse_collision(Vector2 mouse_pos);
+
+extern int smiley_x;
+extern int smiley_y;
 
 #endif
 

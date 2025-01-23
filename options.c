@@ -6,10 +6,13 @@
 #define FONT_SIZE 11
 #define TEXT_OFFSET_Y ((OPTIONS_BUTTON_HEIGHT - FONT_SIZE) / 2)
 
-static inline void options_draw_toggle(int start_x, int start_y);
-static inline void options_draw_dropdown(
-  int start_x, int start_y, difficulty_e pressed_button
-);
+static inline void options_draw_toggle(void);
+static inline void options_draw_dropdown(difficulty_e pressed_button);
+
+int options_toggle_x;
+int options_toggle_y;
+int options_dropdown_x;
+int options_dropdown_y;
 
 static const struct {
   const char *texts[3];
@@ -27,56 +30,47 @@ static const struct {
   }
 };
 
-void options_draw(
-  const int start_x, const int start_y,
-  const bool is_open, const difficulty_e pressed_button
-)
+void options_draw(const bool is_open, const difficulty_e pressed_button)
 {
-  options_draw_toggle(start_x, start_y);
+  options_draw_toggle();
 
   if(is_open)
-    options_draw_dropdown(
-      start_x + OPTIONS_DROPDOWN_MARGIN_LEFT,
-      start_y + OPTIONS_TOGGLE_HEIGHT + OPTIONS_DROPDOWN_MARGIN_TOP,
-      pressed_button
-    );
+    options_draw_dropdown(pressed_button);
 }
 
-static inline void options_draw_toggle(const int start_x, const int start_y)
+static inline void options_draw_toggle(void)
 {
   textures_draw_cogwheel(
-    start_x, start_y,
+    options_toggle_x, options_toggle_y,
     OPTIONS_TOGGLE_WIDTH, OPTIONS_TOGGLE_HEIGHT
   );
 }
 
-static inline void options_draw_dropdown(
-  int dropdown_x, int dropdown_y, const difficulty_e pressed_button
-)
+static inline void options_draw_dropdown(const difficulty_e pressed_button)
 {
   DrawRectangle(
-    dropdown_x, dropdown_y,
+    options_dropdown_x, options_dropdown_y,
     OPTIONS_DROPDOWN_WIDTH, OPTIONS_DROPDOWN_HEIGHT,
     shadow_grey
   );
-  dropdown_x += 1;
-  dropdown_y += 1;
+  int inner_x = options_dropdown_x + 1; // account for 1 px frame
+  int inner_y = options_dropdown_y + 1;
 
   for(difficulty_e i = BEGINNER; i <= EXPERT; i++) {
-    const int button_y = dropdown_y + OPTIONS_BUTTON_HEIGHT * i;
-    int text_x = dropdown_x + text_config.x_offsets[i];
+    const int button_y = inner_y + OPTIONS_BUTTON_HEIGHT * i;
+    int text_x = inner_x + text_config.x_offsets[i];
     int text_y = button_y + TEXT_OFFSET_Y;
 
     if(i == pressed_button) {
       tile_draw_revealed(
-        dropdown_x, button_y,
+        inner_x, button_y,
         OPTIONS_BUTTON_WIDTH, OPTIONS_BUTTON_HEIGHT
       );
       text_x += 1;
       text_y += 1;
     } else {
       tile_draw_with_shadow(
-        dropdown_x, button_y,
+        inner_x, button_y,
         OPTIONS_BUTTON_WIDTH, OPTIONS_BUTTON_HEIGHT,
         PROTRUDING
       );
@@ -91,13 +85,11 @@ static inline void options_draw_dropdown(
   }
 }
 
-bool options_toggle_has_mouse_collision(
-  const int start_x, const int start_y, const Vector2 mouse_pos
-)
+bool options_toggle_has_mouse_collision(const Vector2 mouse_pos)
 {
   const Rectangle toggle_rect = {
-    .x = start_x - TOGGLE_COLLISION_BOX_PADDING,
-    .y = start_y - TOGGLE_COLLISION_BOX_PADDING,
+    .x = options_toggle_x - TOGGLE_COLLISION_BOX_PADDING,
+    .y = options_toggle_y - TOGGLE_COLLISION_BOX_PADDING,
     .width = OPTIONS_TOGGLE_WIDTH + TOGGLE_COLLISION_BOX_PADDING * 2,
     .height = OPTIONS_TOGGLE_HEIGHT + TOGGLE_COLLISION_BOX_PADDING * 2
   };
@@ -105,13 +97,11 @@ bool options_toggle_has_mouse_collision(
   return CheckCollisionPointRec(mouse_pos, toggle_rect);
 }
 
-bool options_dropdown_has_mouse_collision(
-  const int start_x, const int start_y, const Vector2 mouse_pos
-)
+bool options_dropdown_has_mouse_collision(const Vector2 mouse_pos)
 {
   const Rectangle dropdown_rect = {
-    .x = start_x + 1, // account for 1 px frame
-    .y = start_y + 1,
+    .x = options_dropdown_x + 1, // account for 1 px frame
+    .y = options_dropdown_y + 1,
     .width = OPTIONS_DROPDOWN_WIDTH - 2,
     .height = OPTIONS_DROPDOWN_HEIGHT - 2
   };
@@ -119,9 +109,7 @@ bool options_dropdown_has_mouse_collision(
   return CheckCollisionPointRec(mouse_pos, dropdown_rect);
 }
 
-difficulty_e options_get_selected_difficulty(
-  const int start_y, const int mouse_y
-)
+difficulty_e options_get_selected_difficulty(const int mouse_y)
 {
-  return (mouse_y - (start_y + 1)) / OPTIONS_BUTTON_HEIGHT;
+  return (mouse_y - (options_dropdown_y + 1)) / OPTIONS_BUTTON_HEIGHT;
 }

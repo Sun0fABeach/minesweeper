@@ -1,6 +1,11 @@
 #include "digital_digits.h"
 #include "textures.h"
 
+int digital_digits_remaining_flags_x;
+int digital_digits_remaining_flags_y;
+int digital_digits_time_x;
+int digital_digits_time_y;
+
 void digital_digits_draw(const int start_x, const int start_y, int value)
 {
   int n, digit_pos;
