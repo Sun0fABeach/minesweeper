@@ -9,12 +9,12 @@
 static void init_layout_dimensions(int rows, int cols);
 static void set_ui_element_offsets(void);
 static inline void draw_game_frame(void);
-static void draw_info_box(const game_state_s *game_state);
+static inline void draw_info_box(const game_state_s *game_state);
 static inline void draw_remaining_flags_indicator(int remaining_flags);
 static inline void draw_time_indicator(int elapsed_secs);
-static void draw_smiley(const game_state_s *game_state);
+static inline void draw_smiley(const game_state_s *game_state);
 static inline void draw_options(void);
-static void draw_board(
+static inline void draw_board(
   const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
 static void draw_board_tiles(
@@ -63,10 +63,6 @@ static struct {
   void (*change_difficulty)(difficulty_e selected_difficulty);
 } input_callbacks;
 
-static bool pressed_smiley;
-static bool options_open;
-static bool options_capture_inputs;
-static difficulty_e options_pressed_difficulty;
 static struct {
   int row, col;
   bool active;
@@ -183,7 +179,7 @@ static inline void draw_time_indicator(const int elapsed_secs)
   digital_digits_draw_time(elapsed_secs);
 }
 
-static void draw_smiley(const game_state_s *const game_state)
+static inline void draw_smiley(const game_state_s *const game_state)
 {
   smiley_type_e type = SMILEY_HAPPY;
   if(game_state->won)
@@ -193,15 +189,15 @@ static void draw_smiley(const game_state_s *const game_state)
   else if(pressed_board_tile.active)
     type = SMILEY_EXCITED;
 
-  smiley_draw(type, pressed_smiley);
+  smiley_draw(type);
 }
 
 static inline void draw_options(void)
 {
-  options_draw(options_open, options_pressed_difficulty);
+  options_draw();
 }
 
-static void draw_board(
+static inline void draw_board(
   const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
@@ -334,7 +330,7 @@ static bool check_options_dropdown_input(void)
 
 static bool check_smiley_input(void)
 {
-  pressed_smiley = false;
+  smiley_is_pressed = false;
 
   if(
     !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -346,7 +342,7 @@ static bool check_smiley_input(void)
     return false;
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-    pressed_smiley = true;
+    smiley_is_pressed = true;
   else
     input_callbacks.push_smiley();
 

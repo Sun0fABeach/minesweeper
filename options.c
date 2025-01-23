@@ -7,12 +7,15 @@
 #define TEXT_OFFSET_Y ((OPTIONS_BUTTON_HEIGHT - FONT_SIZE) / 2)
 
 static inline void options_draw_toggle(void);
-static inline void options_draw_dropdown(difficulty_e pressed_button);
+static inline void options_draw_dropdown(void);
 
 int options_toggle_x;
 int options_toggle_y;
 int options_dropdown_x;
 int options_dropdown_y;
+bool options_open;
+bool options_capture_inputs;
+difficulty_e options_pressed_difficulty;
 
 static const struct {
   const char *texts[3];
@@ -30,12 +33,11 @@ static const struct {
   }
 };
 
-void options_draw(const bool is_open, const difficulty_e pressed_button)
+void options_draw(void)
 {
   options_draw_toggle();
-
-  if(is_open)
-    options_draw_dropdown(pressed_button);
+  if(options_open)
+    options_draw_dropdown();
 }
 
 static inline void options_draw_toggle(void)
@@ -46,7 +48,7 @@ static inline void options_draw_toggle(void)
   );
 }
 
-static inline void options_draw_dropdown(const difficulty_e pressed_button)
+static inline void options_draw_dropdown(void)
 {
   DrawRectangle(
     options_dropdown_x, options_dropdown_y,
@@ -61,7 +63,7 @@ static inline void options_draw_dropdown(const difficulty_e pressed_button)
     int text_x = inner_x + text_config.x_offsets[i];
     int text_y = button_y + TEXT_OFFSET_Y;
 
-    if(i == pressed_button) {
+    if(i == options_pressed_difficulty) {
       tile_draw_revealed(
         inner_x, button_y,
         OPTIONS_BUTTON_WIDTH, OPTIONS_BUTTON_HEIGHT

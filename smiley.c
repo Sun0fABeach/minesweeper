@@ -2,9 +2,11 @@
 #include "textures.h"
 #include "tile.h"
 
-int smiley_x, smiley_y;
+int smiley_x;
+int smiley_y;
+int smiley_is_pressed;
 
-void smiley_draw(const smiley_type_e type, const bool pressed)
+void smiley_draw(const smiley_type_e type)
 {
   DrawRectangle(smiley_x, smiley_y, SMILEY_WIDTH, SMILEY_HEIGHT, shadow_grey);
 
@@ -13,7 +15,7 @@ void smiley_draw(const smiley_type_e type, const bool pressed)
   int texture_y = smiley_y + 1 + TILE_BORDER_THICKNESS + SMILEY_PADDING;
   Rectangle src_rect;
 
-  if(pressed) {
+  if(smiley_is_pressed) {
     tile_draw_revealed(
       smiley_x + 1,
       smiley_y + 1,
