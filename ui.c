@@ -3,10 +3,11 @@
 #include "smiley.h"
 #include "options.h"
 #include "digital_digits.h"
+#include "board.h"
 #include "board_tile.h"
 #include "textures.h"
 
-static void init_layout_dimensions(int rows, int cols);
+static void set_layout_dimensions(int rows, int cols);
 static void set_ui_element_offsets(void);
 static inline void draw_game_frame(void);
 static inline void draw_info_box(const game_state_s *game_state);
@@ -17,17 +18,11 @@ static inline void draw_options(void);
 static inline void draw_board(
   const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 );
-static void draw_board_tiles(
-  const board_tile_s board[static NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
-);
 
 static bool check_options_open_input(void);
 static bool check_options_dropdown_input(void);
 static bool check_smiley_input(void);
 static bool check_board_input(void);
-static bool board_has_mouse_collision(
-  int start_x, int start_y, Vector2 mouse_pos
-);
 
 
 /* fixed ui element sizes */
@@ -40,21 +35,13 @@ static bool board_has_mouse_collision(
 #define INFO_BOX_DIGIT_PADDING_Y \
   ((INFO_BOX_HEIGHT_INNER - INFO_BOX_DIGIT_HEIGHT) / 2)
 #define INFO_BOX_DIGIT_PADDING_X INFO_BOX_DIGIT_PADDING_Y
-
 /* dynamic ui element sizes */
-static int num_rows;
-static int num_cols;
-static int board_inner_width;
-static int board_inner_height;
-static int board_width;
-static int board_height;
 static int info_box_width;
 static int game_frame_width;
 static int game_frame_height;
 
 static int game_x, game_y;
 static int info_box_x, info_box_y;
-static int board_x, board_y;
 
 static struct {
   void (*select_board_tile)(int row, int col);
@@ -63,16 +50,11 @@ static struct {
   void (*change_difficulty)(difficulty_e selected_difficulty);
 } input_callbacks;
 
-static struct {
-  int row, col;
-  bool active;
-} pressed_board_tile;
-
 
 void ui_init(const int num_rows, const int num_cols)
 {
   tile_init();
-  init_layout_dimensions(num_rows, num_cols);
+  set_layout_dimensions(num_rows, num_cols);
 
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(game_frame_width, game_frame_height, "Minesweeper");
@@ -89,16 +71,16 @@ void ui_deinit(void)
 
 void ui_change_difficulty(const int num_rows, const int num_cols)
 {
-  init_layout_dimensions(num_rows, num_cols);
+  set_layout_dimensions(num_rows, num_cols);
   SetWindowSize(game_frame_width, game_frame_height);
 }
 
-static void init_layout_dimensions(const int rows, const int cols)
+static void set_layout_dimensions(const int rows, const int cols)
 {
-  num_rows = rows;
-  num_cols = cols;
-  board_inner_width = BOARD_TILE_WIDTH * num_cols;
-  board_inner_height = BOARD_TILE_HEIGHT * num_rows;
+  board_num_rows = rows;
+  board_num_cols = cols;
+  board_inner_width = BOARD_TILE_WIDTH * board_num_cols;
+  board_inner_height = BOARD_TILE_HEIGHT * board_num_rows;
   board_width = board_inner_width + TILE_BORDER_THICKNESS*2;
   board_height = board_inner_height + TILE_BORDER_THICKNESS*2;
   info_box_width = board_width;
@@ -186,7 +168,7 @@ static inline void draw_smiley(const game_state_s *const game_state)
     type = SMILEY_COOL;
   else if(game_state->game_over)
     type = SMILEY_DEAD;
-  else if(pressed_board_tile.active)
+  else if(board_pressed_tile.active)
     type = SMILEY_EXCITED;
 
   smiley_draw(type);
@@ -201,50 +183,7 @@ static inline void draw_board(
   const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
 )
 {
-  tile_draw_with_shadow(
-    board_x, board_y,
-    board_width, board_height,
-    INSET
-  );
-  draw_board_tiles(board);
-}
-
-static void draw_board_tiles(
-  const board_tile_s board[static const NUM_TILES_Y_EXPERT][NUM_TILES_X_EXPERT]
-)
-{
-  const int pos_x = board_x + TILE_BORDER_THICKNESS;
-  const int pos_y = board_y + TILE_BORDER_THICKNESS;
-
-  for(int row = 0; row < num_rows; row++) {
-    const int tile_y = pos_y + BOARD_TILE_HEIGHT * row;
-
-    for(int col = 0; col < num_cols; col++) {
-      const int tile_x = pos_x + BOARD_TILE_WIDTH * col;
-
-      if(board[row][col].revealed) {
-        board_tile_draw_revealed(tile_x, tile_y, board[row][col]);
-      } else {
-        board_tile_draw_with_shadow(
-          tile_x, tile_y,
-          PROTRUDING,
-          board[row][col]
-        );
-      }
-    }
-  }
-
-  if(pressed_board_tile.active) {
-    const int col = pressed_board_tile.col;
-    const int row = pressed_board_tile.row;
-
-    if(!board[row][col].revealed && !board[row][col].flagged)
-      tile_draw_revealed(
-        pos_x + BOARD_TILE_WIDTH * col,
-        pos_y + BOARD_TILE_HEIGHT * row,
-        BOARD_TILE_WIDTH, BOARD_TILE_HEIGHT
-      );
-  }
+  board_draw(board);
 }
 
 /*** INPUT LOGIC ***/
@@ -351,7 +290,7 @@ static bool check_smiley_input(void)
 
 static bool check_board_input(void)
 {
-  pressed_board_tile.active = false;
+  board_pressed_tile.active = false;
 
   if(
     !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -360,20 +299,18 @@ static bool check_board_input(void)
   )
     return false;
 
-  const int pos_x = board_x + TILE_BORDER_THICKNESS;
-  const int pos_y = board_y + TILE_BORDER_THICKNESS;
   const Vector2 mouse_pos = GetMousePosition();
 
-  if(!board_has_mouse_collision(pos_x, pos_y, mouse_pos))
+  if(!board_has_mouse_collision(mouse_pos))
     return false;
 
-  const int row = ((int)mouse_pos.y - pos_y) / BOARD_TILE_HEIGHT;
-  const int col = ((int)mouse_pos.x - pos_x) / BOARD_TILE_WIDTH;
+  const int row = board_get_row(mouse_pos.y);
+  const int col = board_get_col(mouse_pos.x);
 
   if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-    pressed_board_tile.row = row;
-    pressed_board_tile.col = col;
-    pressed_board_tile.active = true;
+    board_pressed_tile.row = row;
+    board_pressed_tile.col = col;
+    board_pressed_tile.active = true;
   } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
     input_callbacks.select_board_tile(row, col);
   } else {
@@ -381,19 +318,5 @@ static bool check_board_input(void)
   }
 
   return true;
-}
-
-static bool board_has_mouse_collision(
-  const int start_x, const int start_y, const Vector2 mouse_pos
-)
-{
-  const Rectangle board_rect = {
-    .x = start_x,
-    .y = start_y,
-    .width = board_inner_width,
-    .height = board_inner_height
-  };
-
-  return CheckCollisionPointRec(mouse_pos, board_rect);
 }
 

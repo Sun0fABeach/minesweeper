@@ -236,8 +236,8 @@ adjacent_space_s get_adjacent_space(const int row, const int col)
   return (adjacent_space_s) {
     .start_row = row > 0 ? row - 1 : row,
     .start_col = col > 0 ? col - 1 : col,
-    .end_row = row == num_rows - 1 ? row : row + 1,
-    .end_col = col == num_cols - 1 ? col : col + 1
+    .end_row = row < num_rows - 1 ? row + 1 : row,
+    .end_col = col < num_cols - 1 ? col + 1 : col
   };
 }
 
